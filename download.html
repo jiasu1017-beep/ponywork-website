@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="下载小马办公 - 获取PonyWork最新版本">
+    <title>下载中心 | 小马办公 - PonyWork</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+</head>
+<body>
+    <header id="header">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <span>🐴</span>
+                <span>小马办公</span>
+            </a>
+            <nav class="nav-menu">
+                <a href="index.html">首页</a>
+                <a href="features.html">功能介绍</a>
+                <a href="download.html" class="active">下载中心</a>
+                <a href="guide.html">使用指南</a>
+                <a href="about.html">关于我们</a>
+                <a href="contact.html">联系我们</a>
+            </nav>
+            <div class="nav-actions">
+                <a href="download.html" class="btn btn-primary">立即下载</a>
+            </div>
+            <div class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </header>
+
+    <section class="page-header">
+        <div class="container">
+            <h1>下载中心</h1>
+            <p>获取小马办公最新版本，体验完整功能</p>
+        </div>
+    </section>
+
+    <div class="breadcrumb">
+        <div class="container">
+            <ul>
+                <li><a href="index.html">首页</a></li>
+                <li>下载中心</li>
+            </ul>
+        </div>
+    </div>
+
+    <section class="download-section">
+        <div class="container">
+            <div class="download-grid">
+                <div class="download-card">
+                    <div class="download-card-icon">💻</div>
+                    <h3>Windows 安装版</h3>
+                    <p>推荐大多数用户使用，一键安装，自动配置</p>
+                    <div class="download-info">
+                        <span>📦 v0.0.7</span>
+                        <span>⬇️ 约 25 MB</span>
+                    </div>
+                    <a href="#" class="btn btn-primary" onclick="alert('请从GitHub releases页面下载最新版本')">立即下载</a>
+                </div>
+                <div class="download-card">
+                    <div class="download-card-icon">📦</div>
+                    <h3>Windows 便携版</h3>
+                    <p>无需安装，复制即可使用，适合高级用户</p>
+                    <div class="download-info">
+                        <span>📦 v0.0.7</span>
+                        <span>⬇️ 约 30 MB</span>
+                    </div>
+                    <a href="#" class="btn btn-secondary" onclick="alert('请从GitHub releases页面下载最新版本')">立即下载</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features-detail" style="background: var(--light-bg);">
+        <div class="container">
+            <div class="section-title">
+                <h2>系统要求</h2>
+                <p>确保您的电脑满足以下要求以获得最佳体验</p>
+            </div>
+            <div class="feature-detail-item">
+                <div class="feature-detail-content">
+                    <h3>🖥️ 操作系统</h3>
+                    <ul class="feature-list">
+                        <li>Windows 10 (64位) 或更高版本</li>
+                        <li>Windows 11 (64位)</li>
+                    </ul>
+                </div>
+                <div class="feature-detail-content">
+                    <h3>⚙️ 硬件要求</h3>
+                    <ul class="feature-list">
+                        <li>处理器：Intel Core i3 或同等配置</li>
+                        <li>内存：至少 4 GB RAM</li>
+                        <li>硬盘：至少 100 MB 可用空间</li>
+                        <li>显卡：支持DirectX 9.0</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="faq-section">
+        <div class="container">
+            <div class="section-title">
+                <h2>常见问题</h2>
+                <p>解答您关于下载和安装的常见问题</p>
+            </div>
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h3>如何下载小马办公？</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>点击上方的"立即下载"按钮即可下载最新版本。我们提供安装版和便携版两种下载方式，请根据您的需求选择合适的版本。</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h3>安装失败怎么办？</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>请确保您的系统满足最低要求，并以管理员身份运行安装程序。如果问题仍然存在，请尝试关闭杀毒软件后重新安装。</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h3>便携版和安装版有什么区别？</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>安装版会在系统中创建快捷方式和注册表项，适合长期使用。便携版无需安装，复制到任何位置即可运行，适合需要随身携带或不想在系统中留下痕迹的用户。</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <h3>如何获取更新版本？</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>应用内会提示有新版本可用，您也可以关注我们的GitHub仓库或官方网站获取最新更新。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="version-history">
+        <div class="container">
+            <div class="section-title">
+                <h2>版本历史</h2>
+                <p>查看小马办公的版本更新历史</p>
+            </div>
+            <div class="version-timeline">
+                <div class="version-item">
+                    <div class="version-dot">v0.0.7</div>
+                    <div class="version-content">
+                        <h3>最新版本</h3>
+                        <p class="version-date">2024年</p>
+                        <ul>
+                            <li>优化应用启动速度</li>
+                            <li>修复若干已知问题</li>
+                            <li>改进用户界面体验</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="version-item">
+                    <div class="version-dot">v0.0.6</div>
+                    <div class="version-content">
+                        <h3>功能更新</h3>
+                        <p class="version-date">2024年</p>
+                        <ul>
+                            <li>新增应用排序功能</li>
+                            <li>优化集合管理体验</li>
+                            <li>增加批量操作支持</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="version-item">
+                    <div class="version-dot">v0.0.5</div>
+                    <div class="version-content">
+                        <h3>初始版本</h3>
+                        <p class="version-date">2024年</p>
+                        <ul>
+                            <li>首次发布</li>
+                            <li>基础功能完整实现</li>
+                            <li>支持系统托盘和定时关机</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <span>🐴</span>
+                        <span>小马办公</span>
+                    </div>
+                    <p>小马办公是一款功能完善的桌面办公助手应用，帮助您更高效地管理和使用电脑。</p>
+                </div>
+                <div class="footer-column">
+                    <h4>快速链接</h4>
+                    <ul>
+                        <li><a href="index.html">首页</a></li>
+                        <li><a href="features.html">功能介绍</a></li>
+                        <li><a href="download.html">下载中心</a></li>
+                        <li><a href="guide.html">使用指南</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>支持</h4>
+                    <ul>
+                        <li><a href="guide.html">使用教程</a></li>
+                        <li><a href="contact.html">联系我们</a></li>
+                        <li><a href="about.html">关于我们</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>版本信息</h4>
+                    <ul>
+                        <li><a href="#">当前版本：v0.0.7</a></li>
+                        <li><a href="#">更新日志</a></li>
+                        <li><a href="#">许可证</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 小马办公 PonyWork. All rights reserved.</p>
+                <div class="social-links">
+                    <a href="#" title="GitHub">🐙</a>
+                    <a href="#" title="微信公众号">💬</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

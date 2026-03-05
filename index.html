@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="小马办公 - 您的桌面办公助手，帮助您更高效地管理和使用电脑">
+    <title>小马办公 | 桌面办公助手 - PonyWork</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+</head>
+<body>
+    <header id="header">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <span>🐴</span>
+                <span>小马办公</span>
+            </a>
+            <nav class="nav-menu">
+                <a href="index.html" class="active">首页</a>
+                <a href="features.html">功能介绍</a>
+                <a href="download.html">下载中心</a>
+                <a href="guide.html">使用指南</a>
+                <a href="about.html">关于我们</a>
+                <a href="contact.html">联系我们</a>
+            </nav>
+            <div class="nav-actions">
+                <a href="download.html" class="btn btn-primary">立即下载</a>
+            </div>
+            <div class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1>让办公更高效<br><span>让生活更轻松</span></h1>
+                    <p>小马办公是一款功能完善的桌面办公助手应用，提供应用管理、集合管理、系统托盘、定时关机等实用功能，帮助用户提高办公效率。</p>
+                    <div class="hero-buttons">
+                        <a href="download.html" class="btn btn-primary">立即下载</a>
+                        <a href="features.html" class="btn btn-secondary">了解更多</a>
+                    </div>
+                    <div class="hero-stats">
+                        <div class="stat-item">
+                            <span class="number">v0.0.7</span>
+                            <span class="label">当前版本</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="number">50+</span>
+                            <span class="label">支持应用</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="number">1000+</span>
+                            <span class="label">活跃用户</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-visual">
+                    <div class="hero-image">
+                        <svg viewBox="0 0 500 400" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#67B8DE;stop-opacity:1" />
+                                </linearGradient>
+                                <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feDropShadow dx="0" dy="10" stdDeviation="15" flood-opacity="0.2"/>
+                                </filter>
+                            </defs>
+                            <rect x="50" y="50" width="400" height="300" rx="20" fill="white" filter="url(#shadow)"/>
+                            <rect x="70" y="70" width="160" height="100" rx="10" fill="url(#grad1)" opacity="0.2"/>
+                            <rect x="70" y="180" width="160" height="60" rx="10" fill="#27AE60" opacity="0.8"/>
+                            <rect x="70" y="250" width="160" height="60" rx="10" fill="#F39C12" opacity="0.8"/>
+                            <rect x="250" y="70" width="180" height="60" rx="10" fill="#E74C3C" opacity="0.8"/>
+                            <rect x="250" y="140" width="180" height="60" rx="10" fill="#9B59B6" opacity="0.8"/>
+                            <rect x="250" y="210" width="180" height="60" rx="10" fill="#1ABC9C" opacity="0.8"/>
+                            <rect x="250" y="280" width="180" height="40" rx="10" fill="#34495E"/>
+                            <circle cx="100" cy="100" r="25" fill="#4A90E2"/>
+                            <circle cx="140" cy="100" r="25" fill="#27AE60"/>
+                            <circle cx="180" cy="100" r="25" fill="#F39C12"/>
+                            <text x="100" y="107" font-size="24" fill="white" text-anchor="middle">📁</text>
+                            <text x="140" y="107" font-size="24" fill="white" text-anchor="middle">⏰</text>
+                            <text x="180" y="107" font-size="24" fill="white" text-anchor="middle">⚙️</text>
+                        </svg>
+                    </div>
+                    <div class="hero-card card-1">
+                        <div class="hero-card-icon">⚡</div>
+                        <div class="hero-card-text">
+                            <h4>快速启动</h4>
+                            <p>一键启动常用应用</p>
+                        </div>
+                    </div>
+                    <div class="hero-card card-2">
+                        <div class="hero-card-icon">📂</div>
+                        <div class="hero-card-text">
+                            <h4>集合管理</h4>
+                            <p>批量启动应用组</p>
+                        </div>
+                    </div>
+                    <div class="hero-card card-3">
+                        <div class="hero-card-icon">🖥️</div>
+                        <div class="hero-card-text">
+                            <h4>系统托盘</h4>
+                            <p>最小化后台运行</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features-preview">
+        <div class="container">
+            <div class="section-title">
+                <h2>核心功能</h2>
+                <p>小马办公提供多种实用功能，帮助您更高效地管理电脑应用</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>应用管理</h3>
+                    <p>支持添加、编辑、删除应用程序，提供大图标和列表两种视图模式，支持多选和框选功能</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📂</div>
+                    <h3>集合管理</h3>
+                    <p>自定义应用分组，批量启动集合中的所有应用，灵活管理您的应用集合</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🖥️</div>
+                    <h3>系统托盘</h3>
+                    <p>最小化到系统托盘，支持托盘菜单和双击恢复，节省系统资源</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⏰</div>
+                    <h3>定时关机</h3>
+                    <p>支持定时关机、重启、休眠功能，智能管理电脑使用时间</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🐟</div>
+                    <h3>摸鱼模式</h3>
+                    <p>老板键快速切换状态，伪装窗口功能，灵活应对各种场景</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚙️</div>
+                    <h3>个性化设置</h3>
+                    <p>开机自动启动、关闭行为设置、界面主题定制，满足个性化需求</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>准备好提升工作效率了吗？</h2>
+                <p>立即下载小马办公，让您的桌面工作更加高效便捷</p>
+                <div class="cta-buttons">
+                    <a href="download.html" class="btn btn-primary">立即下载</a>
+                    <a href="features.html" class="btn btn-outline">查看详情</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <span>🐴</span>
+                        <span>小马办公</span>
+                    </div>
+                    <p>小马办公是一款功能完善的桌面办公助手应用，帮助您更高效地管理和使用电脑。</p>
+                </div>
+                <div class="footer-column">
+                    <h4>快速链接</h4>
+                    <ul>
+                        <li><a href="index.html">首页</a></li>
+                        <li><a href="features.html">功能介绍</a></li>
+                        <li><a href="download.html">下载中心</a></li>
+                        <li><a href="guide.html">使用指南</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>支持</h4>
+                    <ul>
+                        <li><a href="guide.html">使用教程</a></li>
+                        <li><a href="contact.html">联系我们</a></li>
+                        <li><a href="about.html">关于我们</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>版本信息</h4>
+                    <ul>
+                        <li><a href="#">当前版本：v0.0.7</a></li>
+                        <li><a href="#">更新日志</a></li>
+                        <li><a href="#">许可证</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 小马办公 PonyWork. All rights reserved.</p>
+                <div class="social-links">
+                    <a href="#" title="GitHub">🐙</a>
+                    <a href="#" title="微信公众号">💬</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
