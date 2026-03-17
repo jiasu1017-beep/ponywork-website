@@ -3,258 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="关于小马办公 - 了解PonyWork开发团队和产品理念">
-    <title>关于我们 | 小马办公 - PonyWork</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+    <title>关于 - 小马办公</title>
+    <meta name="description" content="关于小马办公 - 您的桌面办公助手">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header id="header">
-        <div class="nav-container">
-            <a href="index.html" class="logo">
-                <span>🐴</span>
-                <span>小马办公</span>
-            </a>
-            <nav class="nav-menu">
-                <a href="index.html">首页</a>
-                <a href="features.html">功能介绍</a>
-                <a href="download.html">下载中心</a>
-                <a href="guide.html">使用指南</a>
-                <a href="about.html" class="active">关于我们</a>
-                <a href="contact.html">联系我们</a>
-            </nav>
-            <div class="nav-actions">
-                <a href="download.html" class="btn btn-primary">立即下载</a>
+    <header>
+        <nav class="navbar">
+            <div class="container">
+                <div class="logo">
+                    <h1>小马办公</h1>
+                    <span class="tagline">让工作更高效</span>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="index.html">首页</a></li>
+                    <li><a href="features.html">功能介绍</a></li>
+                    <li><a href="download.html">下载</a></li>
+                    <li><a href="about.html" class="active">关于</a></li>
+                </ul>
             </div>
-            <div class="mobile-menu-btn" onclick="toggleMobileMenu()">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-        </div>
+        </nav>
     </header>
 
-    <section class="page-header">
-        <div class="container">
-            <h1>关于我们</h1>
-            <p>了解小马办公的诞生故事和产品理念</p>
-        </div>
-    </section>
+    <main>
+        <section class="page-header">
+            <div class="container">
+                <h1>关于小马办公</h1>
+                <p>让工作更高效，让生活更轻松</p>
+            </div>
+        </section>
 
-    <div class="breadcrumb">
-        <div class="container">
-            <ul>
-                <li><a href="index.html">首页</a></li>
-                <li>关于我们</li>
-            </ul>
-        </div>
-    </div>
-
-    <section class="about-section">
-        <div class="container">
-            <div class="about-grid">
-                <div class="about-image">
-                    <svg viewBox="0 0 500 400" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <linearGradient id="aboutGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#67B8DE;stop-opacity:1" />
-                            </linearGradient>
-                        </defs>
-                        <rect x="50" y="50" width="400" height="300" rx="20" fill="white" filter="drop-shadow(0 10px 30px rgba(0,0,0,0.1))"/>
-                        <circle cx="250" cy="180" r="80" fill="url(#aboutGrad)" opacity="0.2"/>
-                        <text x="250" y="200" font-size="70" fill="#4A90E2" text-anchor="middle">🐴</text>
-                        <text x="250" y="280" font-size="24" fill="#2C3E50" text-anchor="middle">小马办公</text>
-                        <text x="250" y="310" font-size="14" fill="#7F8C8D" text-anchor="middle">让办公更高效</text>
-                    </svg>
-                </div>
+        <section class="about-section">
+            <div class="container">
                 <div class="about-content">
-                    <h2>致力于提升办公效率</h2>
-                    <p>小马办公（PonyWork）是一款由独立开发者打造的桌面办公助手应用。我们希望通过这款产品，帮助用户更高效地管理和使用电脑上的各种应用程序。</p>
-                    <p>在日常工作中，我们发现很多人需要频繁地在多个应用程序之间切换，这不仅浪费时间，还容易打断工作思路。小马办公正是为了解决这一痛点而诞生的。</p>
-                    <ul class="about-features">
-                        <li>🎯 简单易用：界面简洁，操作直观</li>
-                        <li>⚡ 高效快捷：一键启动多个应用</li>
-                        <li>🔒 安全可靠：本地运行，数据隐私</li>
-                        <li>🆓 免费开源：完全免费，代码透明</li>
+                    <h2>项目介绍</h2>
+                    <p>
+                        <strong>小马办公 (PonyWork)</strong> 是一个基于 Qt 框架开发的桌面办公助手应用。
+                        我们致力于为用户提供高效、便捷的桌面应用管理体验，帮助用户更好地管理和启动常用应用程序。
+                    </p>
+                    <p>
+                        经过多个开发版本的迭代优化，小马办公 v1.0.0 正式版于 2026年3月17日 发布。
+                        这是小马办公的第一个稳定版本，标志着产品进入了成熟运营阶段。
+                    </p>
+
+                    <h2>技术栈</h2>
+                    <p>小马办公采用现代化的技术栈构建：</p>
+                    <ul style="margin-left: 20px; margin-bottom: 20px;">
+                        <li><strong>编程语言：</strong>C++17</li>
+                        <li><strong>开发框架：</strong>Qt 5.15.2</li>
+                        <li><strong>编译器：</strong>MinGW 8.1.0</li>
+                        <li><strong>构建工具：</strong>qmake + GNU Make</li>
+                        <li><strong>数据存储：</strong>JSON</li>
                     </ul>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <section class="features-detail" style="background: var(--light-bg);">
-        <div class="container">
-            <div class="section-title">
-                <h2>产品理念</h2>
-                <p>我们坚持的设计原则和开发理念</p>
-            </div>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3>用户至上</h3>
-                    <p>始终以用户需求为导向，持续优化用户体验，让产品真正帮到用户。</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">⚡</div>
-                    <h3>简单高效</h3>
-                    <p>保持功能强大的同时，追求极简的操作方式，让用户快速上手。</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔒</div>
-                    <h3>隐私安全</h3>
-                    <p>应用完全本地运行，不收集任何用户数据，保护用户隐私安全。</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔄</div>
-                    <h3>持续迭代</h3>
-                    <p>不断倾听用户反馈，持续更新优化，让产品越来越好。</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🌐</div>
-                    <h3>开放开源</h3>
-                    <p>代码开源，接受社区监督，欢迎开发者参与贡献。</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">💬</div>
-                    <h3>倾听沟通</h3>
-                    <p>重视每一条用户反馈，努力改进产品，感恩用户的支持。</p>
-                </div>
-            </div>
-        </div>
-    </section>
+                    <div class="team-section">
+                        <h3>开发团队</h3>
+                        <div class="team-member">
+                            <div class="avatar">J</div>
+                            <div>
+                                <h4>jiasu</h4>
+                                <p>项目主要维护者</p>
+                            </div>
+                        </div>
+                    </div>
 
-    <section class="team-section">
-        <div class="container">
-            <div class="section-title">
-                <h2>开发团队</h2>
-                <p>感谢每一位为小马办公付出的人</p>
-            </div>
-            <div class="team-grid">
-                <div class="team-member">
-                    <div class="team-avatar">👨‍💻</div>
-                    <h3>开发者</h3>
-                    <p>独立开发者</p>
-                    <div class="team-social">
-                        <a href="#" title="GitHub">🐙</a>
+                    <div class="contact-section">
+                        <h3>联系我们</h3>
+                        <ul>
+                            <li><strong>GitHub：</strong><a href="https://github.com/jiasu1017-beep/Test" target="_blank">@jiasu1017-beep</a></li>
+                            <li><strong>项目地址：</strong><a href="https://github.com/jiasu1017-beep/Test" target="_blank">https://github.com/jiasu1017-beep/Test</a></li>
+                            <li><strong>问题反馈：</strong><a href="https://github.com/jiasu1017-beep/Test/issues" target="_blank">提交 Issue</a></li>
+                            <li><strong>微信公众号：</strong>梁柱墙笔记</li>
+                        </ul>
                     </div>
-                </div>
-                <div class="team-member">
-                    <div class="team-avatar">🤝</div>
-                    <h3>社区贡献者</h3>
-                    <p>开源社区</p>
-                    <div class="team-social">
-                        <a href="#" title="GitHub">🐙</a>
+
+                    <div style="margin-top: 40px; padding: 30px; background: #f8f9fa; border-radius: 12px;">
+                        <h3 style="margin-bottom: 15px;">📄 许可证</h3>
+                        <p style="font-size: 14px; color: #666;">
+                            本项目采用 <strong>MIT 许可证</strong>。
+                            您可以自由使用、修改和分发本软件，但需保留版权声明。
+                        </p>
+                        <p style="margin-top: 10px; font-size: 14px; color: #666;">
+                            &copy; 2024-2026 小马办公. All rights reserved.
+                        </p>
                     </div>
-                </div>
-                <div class="team-member">
-                    <div class="team-avatar">💡</div>
-                    <h3>产品建议</h3>
-                    <p>所有用户</p>
-                    <div class="team-social">
-                        <a href="#" title="反馈">💬</a>
-                    </div>
-                </div>
-                <div class="team-member">
-                    <div class="team-avatar">❤️</div>
-                    <h3>支持者</h3>
-                    <p>所有用户</p>
-                    <div class="team-social">
-                        <a href="#" title="感谢">🙏</a>
+
+                    <div style="margin-top: 40px; text-align: center;">
+                        <h3 style="margin-bottom: 20px;">感谢您的支持！</h3>
+                        <p>如果您喜欢这个项目，欢迎 Star ⭐️ 和分享</p>
+                        <div style="margin-top: 20px;">
+                            <a href="https://github.com/jiasu1017-beep/Test" class="btn btn-primary" target="_blank">访问 GitHub</a>
+                            <a href="download.html" class="btn btn-secondary">下载使用</a>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <section class="features-detail">
-        <div class="container">
-            <div class="section-title">
-                <h2>技术栈</h2>
-                <p>小马办公采用的技术框架和工具</p>
-            </div>
-            <div class="feature-detail-item">
-                <div class="feature-detail-content">
-                    <h3>🚀 Qt 框架</h3>
-                    <p>使用 Qt 5.15.2 开发，提供跨平台的原生桌面应用体验。</p>
-                    <ul class="feature-list">
-                        <li>Qt Widgets - 经典桌面UI组件</li>
-                        <li>Qt Core - 核心功能模块</li>
-                        <li>Qt GUI - 图形界面渲染</li>
-                    </ul>
-                </div>
-                <div class="feature-detail-content">
-                    <h3>⚙️ C++ 开发</h3>
-                    <p>使用现代 C++17 标准开发，保证性能和稳定性。</p>
-                    <ul class="feature-list">
-                        <li>C++17 现代特性</li>
-                        <li>MinGW 8.1.0 编译器</li>
-                        <li>qmake 构建系统</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="cta-section">
-        <div class="container">
-            <div class="cta-content">
-                <h2>加入我们</h2>
-                <p>感谢您对小马办公的关注，欢迎提出宝贵建议</p>
-                <div class="cta-buttons">
-                    <a href="contact.html" class="btn btn-primary">联系我们</a>
-                    <a href="https://github.com/jiasu1017-beep/Test" class="btn btn-outline" target="_blank">访问 GitHub</a>
-                </div>
-            </div>
-        </div>
-    </section>
+        </section>
+    </main>
 
     <footer>
         <div class="container">
             <div class="footer-content">
-                <div class="footer-brand">
-                    <div class="logo">
-                        <span>🐴</span>
-                        <span>小马办公</span>
-                    </div>
-                    <p>小马办公是一款功能完善的桌面办公助手应用，帮助您更高效地管理和使用电脑。</p>
+                <div class="footer-section">
+                    <h4>关于</h4>
+                    <p>小马办公 - 您的桌面办公助手</p>
+                    <p>版本: v1.0.0 正式版</p>
                 </div>
-                <div class="footer-column">
-                    <h4>快速链接</h4>
+                <div class="footer-section">
+                    <h4>链接</h4>
                     <ul>
-                        <li><a href="index.html">首页</a></li>
                         <li><a href="features.html">功能介绍</a></li>
                         <li><a href="download.html">下载中心</a></li>
-                        <li><a href="guide.html">使用指南</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h4>支持</h4>
-                    <ul>
-                        <li><a href="guide.html">使用教程</a></li>
-                        <li><a href="contact.html">联系我们</a></li>
                         <li><a href="about.html">关于我们</a></li>
                     </ul>
                 </div>
-                <div class="footer-column">
-                    <h4>版本信息</h4>
-                    <ul>
-                        <li><a href="#">当前版本：v0.0.9</a></li>
-                        <li><a href="#">更新日志</a></li>
-                        <li><a href="#">许可证</a></li>
-                    </ul>
+                <div class="footer-section">
+                    <h4>联系方式</h4>
+                    <p>GitHub: @jiasu1017-beep</p>
+                    <p>微信公众号: 梁柱墙笔记</p>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 小马办公 PonyWork. All rights reserved.</p>
-                <div class="social-links">
-                    <a href="#" title="GitHub">🐙</a>
-                    <a href="#" title="微信公众号">💬</a>
-                </div>
+                <p>&copy; 2024-2026 小马办公. All rights reserved.</p>
             </div>
         </div>
     </footer>
-
-    <script src="js/main.js"></script>
 </body>
 </html>
