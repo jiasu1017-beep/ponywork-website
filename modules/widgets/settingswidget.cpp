@@ -87,20 +87,22 @@ void SettingsWidget::setupUI()
     leftWidget->setFixedWidth(220);
     leftWidget->setStyleSheet("background-color: #f5f5f5;");
     QVBoxLayout *leftLayout = new QVBoxLayout(leftWidget);
-    leftLayout->setContentsMargins(10, 20, 10, 20);
-    leftLayout->setSpacing(5);
+    leftLayout->setContentsMargins(10, 10, 10, 10);  // 减少边距
+    leftLayout->setSpacing(2);  // 减少间距
 
     QLabel *titleLabel = new QLabel("设置", leftWidget);
-    titleLabel->setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px 15px; color: #333;");
+    titleLabel->setStyleSheet("font-size: 18px; font-weight: bold; padding: 5px 15px; color: #333;");
     leftLayout->addWidget(titleLabel);
 
     QListWidget *listWidget = new QListWidget(leftWidget);
     listWidget->setFrameShape(QListWidget::NoFrame);
     listWidget->setBackgroundRole(QPalette::NoRole);
     listWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    listWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);  // 禁用滚动条
+    listWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);  // 自动扩展
     listWidget->setStyleSheet(
         "QListWidget { border: none; background: transparent; } "
-        "QListWidget::item { padding: 12px 15px; border-radius: 6px; margin: 2px 5px; color: #555; } "
+        "QListWidget::item { padding: 10px 15px; border-radius: 6px; margin: 1px 5px; color: #555; } "
         "QListWidget::item:selected { background-color: #e3f2fd; color: #1976d2; font-weight: bold; } "
         "QListWidget::item:hover { background-color: #eeeeee; }"
     );
@@ -127,9 +129,7 @@ void SettingsWidget::setupUI()
     aboutItem->setData(Qt::UserRole, 6);
 
     listWidget->setCurrentRow(0);
-    leftLayout->addWidget(listWidget);
-    
-    leftLayout->addStretch();
+    leftLayout->addWidget(listWidget, 1);  // stretch factor = 1，让listWidget自动扩展
 
     QStackedWidget *stackWidget = new QStackedWidget(this);
     stackWidget->setStyleSheet("background-color: white;");
