@@ -4,31 +4,22 @@
 #include <QDir>
 #include <QCryptographicHash>
 #include <QHash>
+#include <QProcess>
+#include <QFileInfo>
 
 FRPCManager* FRPCManager::s_instance = nullptr;
 
 FRPCManager::FRPCManager()
     : m_db(nullptr)
-    , m_process(nullptr)
     , m_status(StatusDisconnected)
     , m_isRunning(false)
-    , m_stopping(false)
     , m_autoStopOnExit(true)
     , m_frpcPid(0)
     , m_remotePort(0)
 {
     qDebug() << "[FRPC] FRPCManager constructed, m_autoStopOnExit:" << m_autoStopOnExit;
-    m_process = new QProcess(this);
+    // startDetached模式下不需要m_process管理进程，只保留timer用于心跳检测
     m_heartbeatTimer = new QTimer(this);
-
-    connect(m_process, &QProcess::started, this, &FRPCManager::onProcessStarted);
-    connect(m_process, QOverload<QProcess::ProcessError>::of(&QProcess::errorOccurred),
-            this, &FRPCManager::onProcessError);
-    connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, &FRPCManager::onProcessFinished);
-    connect(m_process, &QProcess::readyReadStandardOutput, this, &FRPCManager::onReadOutput);
-    connect(m_process, &QProcess::readyReadStandardError, this, &FRPCManager::onReadOutput);
-
     connect(m_heartbeatTimer, &QTimer::timeout, this, &FRPCManager::onHeartbeatTimeout);
 }
 
@@ -259,163 +250,6 @@ void FRPCManager::stopFRPC()
     emit stopped();
 
     qDebug() << "[FRPC] stopFRPC: completed";
-}
-
-void FRPCManager::onProcessStarted()
-{
-    qDebug() << "[FRPC] onProcessStarted called, process state:" << m_process->state();
-    m_isRunning = true;
-
-    // 使用固定端口，无需等待解析
-    // 每个用户+设备组合使用不同端口
-    QString deviceName = QHostInfo::localHostName();
-    QString combined = QString::number(m_config.userId) + "_" + deviceName;
-    int hash = qHash(combined) % 30000;
-    int fixedPort = 20000 + qAbs(hash);
-    m_remotePort = fixedPort;
-
-    m_status = StatusConnected;
-    emit statusChanged(m_status);
-    emit remotePortChanged(m_remotePort);
-
-    // 保存配置
-    m_config.remotePort = m_remotePort;
-    m_config.isEnabled = true;
-    m_config.lastUsedTime = QDateTime::currentDateTime();
-    if (m_db) {
-        m_db->saveFRPCConfig(m_config);
-    }
-
-    // 启动心跳定时器
-    m_heartbeatTimer->start(30000);  // 30秒
-}
-
-void FRPCManager::onProcessError(QProcess::ProcessError error)
-{
-    qDebug() << "[FRPC] onProcessError called, error:" << error << "m_stopping:" << m_stopping;
-
-    // 保存停止标志，因为后面的处理可能会重置它
-    bool wasStopping = m_stopping;
-
-    // 如果是主动停止的，不发送错误消息
-    if (wasStopping || m_stopping) {
-        qDebug() << "[FRPC] onProcessError: 主动停止，忽略错误";
-        m_isRunning = false;
-        m_status = StatusDisconnected;
-        m_stopping = false;  // 重置标志
-        emit statusChanged(m_status);
-        return;
-    }
-
-    // 非主动停止的情况（可能是手动关闭进程或其他外部原因）
-    // 不显示错误对话框，只更新状态为未连接
-    qDebug() << "[FRPC] process error:" << error;
-    m_isRunning = false;
-    m_status = StatusDisconnected;
-    emit statusChanged(m_status);
-}
-
-void FRPCManager::onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
-{
-    qDebug() << "[FRPC] onProcessFinished called, exitCode:" << exitCode << "exitStatus:" << exitStatus << "m_stopping:" << m_stopping;
-
-    // 如果是主动停止的，不发送任何错误消息
-    if (m_stopping) {
-        qDebug() << "[FRPC] onProcessFinished: 主动停止，忽略退出";
-        m_isRunning = false;
-        m_status = StatusDisconnected;
-        m_remotePort = 0;
-        m_heartbeatTimer->stop();
-        m_stopping = false;  // 重置标志
-        emit statusChanged(m_status);
-        emit remotePortChanged(0);
-        return;
-    }
-
-    // 非主动停止的情况（进程意外退出/手动关闭）
-    // 不显示错误对话框，只更新状态为未连接
-    m_isRunning = false;
-    m_status = StatusDisconnected;
-    m_remotePort = 0;
-    m_heartbeatTimer->stop();
-
-    emit statusChanged(m_status);
-    emit remotePortChanged(0);
-}
-
-void FRPCManager::onReadOutput()
-{
-    QString output = m_process->readAll();
-    qDebug() << "FRPC output:" << output;
-
-    parseFRPCOutput(output);
-}
-
-void FRPCManager::parseFRPCOutput(const QString &output)
-{
-    qDebug() << "[FRPC] parseFRPCOutput received:" << output;
-
-    // 解析FRPC输出，获取分配的远程端口
-    int port = parseRemotePort(output);
-    if (port > 0 && port != m_remotePort) {
-        m_remotePort = port;
-        m_status = StatusConnected;
-        emit remotePortChanged(port);
-        emit statusChanged(m_status);
-
-        // 更新配置
-        m_config.remotePort = port;
-        m_config.isEnabled = true;
-        m_config.lastUsedTime = QDateTime::currentDateTime();
-        if (m_db) {
-            m_db->saveFRPCConfig(m_config);
-        }
-    }
-
-    // 如果看到 "start proxy success"，说明代理已建立
-    if (output.contains("start proxy success") && m_status != StatusConnected) {
-        m_status = StatusConnected;
-        emit statusChanged(m_status);
-    }
-}
-
-int FRPCManager::parseRemotePort(const QString &output)
-{
-    qDebug() << "[FRPC] parseRemotePort checking:" << output;
-
-    // FRPC输出格式示例:
-    // [rdp_PC-NAME] start proxy success
-    // [rdp_PC-NAME] proxy listen on port 36123
-    // port has been allocated: 36123
-
-    // 尝试解析 "proxy listen on port"
-    QRegularExpression regex1("proxy listen on port (\\d+)");
-    QRegularExpressionMatch match1 = regex1.match(output);
-    if (match1.hasMatch()) {
-        return match1.captured(1).toInt();
-    }
-
-    // 尝试解析 "port has been allocated:"
-    QRegularExpression regex2("port has been allocated: (\\d+)");
-    QRegularExpressionMatch match2 = regex2.match(output);
-    if (match2.hasMatch()) {
-        return match2.captured(1).toInt();
-    }
-
-    // 尝试解析 "remote_port ="
-    QRegularExpression regex3("remote_port.*?(\\d{5})");
-    QRegularExpressionMatch match3 = regex3.match(output);
-    if (match3.hasMatch()) {
-        return match3.captured(1).toInt();
-    }
-
-    // 如果看到 "start proxy success"，说明代理已建立但端口未知
-    if (output.contains("start proxy success")) {
-        qDebug() << "[FRPC] Proxy started but port unknown";
-        return 0;
-    }
-
-    return 0;
 }
 
 void FRPCManager::onHeartbeatTimeout()

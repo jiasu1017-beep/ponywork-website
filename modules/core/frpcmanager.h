@@ -2,7 +2,6 @@
 #define FRPCMANAGER_H
 
 #include <QObject>
-#include <QProcess>
 #include <QTimer>
 #include <QFile>
 #include <QTextStream>
@@ -60,10 +59,6 @@ signals:
     void stopped();
 
 private slots:
-    void onProcessStarted();
-    void onProcessError(QProcess::ProcessError error);
-    void onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
-    void onReadOutput();
     void onHeartbeatTimeout();
 
 private:
@@ -73,17 +68,13 @@ private:
     QString getFRPCExecutablePath();
     QString getConfigFilePath();
     bool writeConfigFile();
-    void parseFRPCOutput(const QString &output);
-    int parseRemotePort(const QString &output);
 
     static FRPCManager *s_instance;
 
     Database *m_db;
     FRPCConfig m_config;
-    QProcess *m_process;
     ConnectionStatus m_status;
     bool m_isRunning;
-    bool m_stopping;  // 是否主动停止
     bool m_autoStopOnExit;  // 退出时是否自动停止
     qint64 m_frpcPid;  // 记录启动的frpc进程PID
     int m_remotePort;
