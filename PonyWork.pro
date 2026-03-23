@@ -2,7 +2,7 @@ QT       += core gui network charts printsupport axcontainer
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-win32: LIBS += -lpsapi -lshell32 -lole32 -loleaut32 -lshlwapi -luuid -luser32
+win32: LIBS += -lpsapi -lshell32 -lole32 -loleaut32 -lshlwapi -luuid -luser32 -lcrypt32
 
 TARGET = PonyWork
 TEMPLATE = app

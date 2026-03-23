@@ -7,7 +7,13 @@
 #include <QProcess>
 #include <QFileInfo>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <dpapi.h>
+#endif
+
 FRPCManager* FRPCManager::s_instance = nullptr;
+QMutex FRPCManager::s_mutex;
 
 FRPCManager::FRPCManager()
     : m_db(nullptr)
@@ -30,9 +36,20 @@ FRPCManager::~FRPCManager()
 
     // 使用startDetached启动时，frpc进程已完全独立
     // 但如果用户设置了autoStopOnExit=true，仍然尝试停止
-    if (m_autoStopOnExit && m_isRunning) {
-        stopFRPC();
+    // 注意：析构函数中不能emit信号，直接清理状态
+    if (m_autoStopOnExit && m_isRunning && m_frpcPid > 0) {
+        qDebug() << "[FRPC] ~FRPCManager: stopping frpc process";
+        QProcess p;
+        p.start("taskkill", QStringList() << "/PID" << QString::number(m_frpcPid) << "/F");
+        if (!p.waitForFinished(3000)) {
+            qDebug() << "[FRPC] ~FRPCManager: failed to stop frpc process";
+        }
     }
+
+    // 直接清理状态，不发射信号（析构函数中emit信号可能导致未定义行为）
+    m_heartbeatTimer->stop();
+    m_isRunning = false;
+    m_status = StatusDisconnected;
 }
 
 void FRPCManager::setAutoStopOnExit(bool enabled)
@@ -42,6 +59,7 @@ void FRPCManager::setAutoStopOnExit(bool enabled)
 
 FRPCManager* FRPCManager::instance()
 {
+    QMutexLocker locker(&s_mutex);
     if (!s_instance) {
         s_instance = new FRPCManager();
     }
@@ -236,7 +254,12 @@ void FRPCManager::stopFRPC()
         qDebug() << "[FRPC] stopFRPC: using taskkill /PID" << m_frpcPid;
         QProcess p;
         p.start("taskkill", QStringList() << "/PID" << QString::number(m_frpcPid) << "/F");
-        p.waitForFinished(3000);
+        if (!p.waitForFinished(3000)) {
+            qDebug() << "[FRPC] stopFRPC: failed to stop process, trying force kill";
+            p.kill();
+        } else if (p.exitCode() != 0) {
+            qDebug() << "[FRPC] stopFRPC: taskkill returned error code:" << p.exitCode();
+        }
         m_frpcPid = 0;
     }
 
@@ -254,20 +277,25 @@ void FRPCManager::stopFRPC()
 
 void FRPCManager::onHeartbeatTimeout()
 {
-    // 使用tasklist检查frpc进程是否仍在运行
+    // 检查特定的frpc进程是否仍在运行
+    if (m_frpcPid <= 0) {
+        return;
+    }
+
     QProcess p;
-    p.start("tasklist", QStringList() << "/FI" << "IMAGENAME eq frpc.exe");
+    p.start("tasklist", QStringList() << "/PID" << QString::number(m_frpcPid));
     p.waitForFinished(1000);
 
     QString output = p.readAllStandardOutput();
-    bool isRunning = output.contains("frpc.exe", Qt::CaseInsensitive);
+    bool isRunning = output.contains(QString::number(m_frpcPid));
 
     if (m_isRunning && !isRunning) {
         // frpc进程意外退出
-        qDebug() << "[FRPC] Heartbeat: frpc process not found, marking as stopped";
+        qDebug() << "[FRPC] Heartbeat: frpc process" << m_frpcPid << "not found, marking as stopped";
         m_isRunning = false;
         m_status = StatusDisconnected;
         m_remotePort = 0;
+        m_frpcPid = 0;
         m_heartbeatTimer->stop();
         emit statusChanged(m_status);
         emit remotePortChanged(0);
@@ -283,14 +311,11 @@ void FRPCManager::setConfig(const FRPCConfig &config)
     }
 }
 
-QString FRPCManager::generateRDPFile(const QString &username, const QString &password,
-                                      int screenWidth, int screenHeight, bool fullScreen)
+// 私有方法：生成RDP文件内容
+QString FRPCManager::doGenerateRDPFile(const QString &serverAddr, int port,
+                                        const QString &username, const QString &password,
+                                        int screenWidth, int screenHeight, bool fullScreen)
 {
-    if (m_remotePort == 0) {
-        emit errorOccurred("FRPC未连接，无法生成RDP文件");
-        return QString();
-    }
-
     QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
     QString rdpFilePath = tempDir + "/PonyWork_RDP_" + QHostInfo::localHostName() + ".rdp";
 
@@ -304,12 +329,12 @@ QString FRPCManager::generateRDPFile(const QString &username, const QString &pas
     out.setCodec("UTF-8");
 
     // RDP文件内容
-    out << "full address:s:" << m_config.serverAddr << ":" << m_remotePort << "\n";
+    out << "full address:s:" << serverAddr << ":" << port << "\n";
     out << "username:s:" << username << "\n";
 
     if (!password.isEmpty()) {
-        // 密码需要特殊处理
-        out << "password 51:b:" << password.toUtf8().toBase64() << "\n";
+        // 使用Windows DPAPI加密密码
+        out << "password 51:b:" << encryptRdpPassword(password) << "\n";
     }
 
     out << "screen mode id:i:" << (fullScreen ? 2 : 1) << "\n";
@@ -336,6 +361,18 @@ QString FRPCManager::generateRDPFile(const QString &username, const QString &pas
     return rdpFilePath;
 }
 
+QString FRPCManager::generateRDPFile(const QString &username, const QString &password,
+                                      int screenWidth, int screenHeight, bool fullScreen)
+{
+    if (m_remotePort == 0) {
+        emit errorOccurred("FRPC未连接，无法生成RDP文件");
+        return QString();
+    }
+
+    return doGenerateRDPFile(m_config.serverAddr, m_remotePort, username, password,
+                             screenWidth, screenHeight, fullScreen);
+}
+
 // 重载版本：接受远程端口参数
 QString FRPCManager::generateRDPFile(const QString &username, const QString &password, int remotePort)
 {
@@ -344,49 +381,36 @@ QString FRPCManager::generateRDPFile(const QString &username, const QString &pas
         return QString();
     }
 
-    QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
-    QString rdpFilePath = tempDir + "/PonyWork_RDP_" + QHostInfo::localHostName() + ".rdp";
+    // 使用默认分辨率1920x1080
+    return doGenerateRDPFile(m_config.serverAddr, remotePort, username, password,
+                             1920, 1080, true);
+}
 
-    QFile rdpFile(rdpFilePath);
-    if (!rdpFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        emit errorOccurred("无法创建RDP文件");
-        return QString();
+QString FRPCManager::encryptRdpPassword(const QString &password)
+{
+#ifdef _WIN32
+    // 使用Windows DPAPI加密密码
+    QByteArray passwordBytes = password.toUtf8();
+
+    DATA_BLOB inputBlob;
+    inputBlob.cbData = passwordBytes.size();
+    inputBlob.pbData = reinterpret_cast<BYTE*>(passwordBytes.data());
+
+    DATA_BLOB outputBlob = {0, nullptr};
+
+    if (CryptProtectData(&inputBlob, L"RDP Password", nullptr, nullptr, nullptr, 0, &outputBlob)) {
+        // 返回加密数据的Base64编码
+        QByteArray encrypted(reinterpret_cast<const char*>(outputBlob.pbData), outputBlob.cbData);
+        QString result = QString::fromLatin1(encrypted.toBase64());
+
+        // 释放DPAPI分配的内存
+        LocalFree(outputBlob.pbData);
+
+        return result;
     }
-
-    QTextStream out(&rdpFile);
-    out.setCodec("UTF-8");
-
-    // RDP文件内容
-    out << "full address:s:" << m_config.serverAddr << ":" << remotePort << "\n";
-    out << "username:s:" << username << "\n";
-
-    if (!password.isEmpty()) {
-        // 密码需要特殊处理
-        out << "password 51:b:" << password.toUtf8().toBase64() << "\n";
-    }
-
-    out << "screen mode id:i:2\n";
-    out << "use multimon:i:0\n";
-    out << "desktopwidth:i:1920\n";
-    out << "desktopheight:i:1080\n";
-    out << "session bpp:i:32\n";
-    out << "compression:i:1\n";
-    out << "keyboardhook:i:2\n";
-    out << "audiomode:i:0\n";
-    out << "redirectprinters:i:0\n";
-    out << "redirectcomports:i:0\n";
-    out << "redirectsmartcards:i:0\n";
-    out << "redirectclipboard:i:1\n";
-    out << "redirectposdevices:i:0\n";
-    out << "autoreconnection enabled:i:1\n";
-    out << "authentication level:i:2\n";
-    out << "prompt for credentials:i:0\n";
-    out << "negotiate security layer:i:1\n";
-
-    rdpFile.close();
-
-    qDebug() << "RDP file generated with port:" << remotePort << "path:" << rdpFilePath;
-    return rdpFilePath;
+#endif
+    // 如果加密失败，回退到简单Base64编码（不推荐用于生产环境）
+    return password.toUtf8().toBase64();
 }
 
 QString FRPCManager::getLocalUsername()

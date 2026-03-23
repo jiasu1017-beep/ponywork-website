@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QFile>
+#include <QMutex>
 #include <QTextStream>
 #include <QDir>
 #include <QStandardPaths>
@@ -68,8 +69,13 @@ private:
     QString getFRPCExecutablePath();
     QString getConfigFilePath();
     bool writeConfigFile();
+    QString encryptRdpPassword(const QString &password);  // 使用Windows API加密RDP密码
+    QString doGenerateRDPFile(const QString &serverAddr, int port,
+                              const QString &username, const QString &password,
+                              int screenWidth, int screenHeight, bool fullScreen);  // 内部方法
 
     static FRPCManager *s_instance;
+    static QMutex s_mutex;
 
     Database *m_db;
     FRPCConfig m_config;
