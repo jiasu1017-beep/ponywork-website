@@ -500,7 +500,6 @@ void MainWindow::onExitApp()
         FRPCManager::instance()->stopFRPC();
     } else {
         FRPCManager::instance()->setAutoStopOnExit(false);
-        FRPCManager::instance()->detachProcess();
     }
 
     QApplication::quit();
@@ -762,10 +761,9 @@ void MainWindow::closeEvent(QCloseEvent *event)
         if (db->getRemoteDesktopAutoStop()) {
             FRPCManager::instance()->stopFRPC();
         } else {
-            // 用户未勾选自动停止，将QProcess分离以防止自动终止子进程
+            // 用户未勾选自动停止，frpc进程保持运行（使用startDetached启动，已完全独立）
             FRPCManager::instance()->setAutoStopOnExit(false);
-            FRPCManager::instance()->detachProcess(); // 新增：detach进程
-            qDebug() << "[MainWindow] auto stop disabled, detached process to keep FRPC running";
+            qDebug() << "[MainWindow] auto stop disabled, FRPC will continue running";
         }
     }
 }

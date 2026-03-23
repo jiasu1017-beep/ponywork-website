@@ -27,7 +27,6 @@ public:
 
     void setAutoStopOnExit(bool enabled);
     bool autoStopOnExit() const { return m_autoStopOnExit; }
-    void detachProcess(); // 分离QProcess以防止自动终止子进程
 
     void initialize(Database *db);
 
@@ -86,7 +85,7 @@ private:
     bool m_isRunning;
     bool m_stopping;  // 是否主动停止
     bool m_autoStopOnExit;  // 退出时是否自动停止
-    bool m_detached;  // 是否已分离进程（不自动停止时使用）
+    qint64 m_frpcPid;  // 记录启动的frpc进程PID
     int m_remotePort;
     QTimer *m_heartbeatTimer;
 };

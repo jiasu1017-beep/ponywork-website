@@ -14,7 +14,7 @@ FRPCManager::FRPCManager()
     , m_isRunning(false)
     , m_stopping(false)
     , m_autoStopOnExit(true)
-    , m_detached(false)
+    , m_frpcPid(0)
     , m_remotePort(0)
 {
     qDebug() << "[FRPC] FRPCManager constructed, m_autoStopOnExit:" << m_autoStopOnExit;
@@ -34,44 +34,19 @@ FRPCManager::FRPCManager()
 
 FRPCManager::~FRPCManager()
 {
-    qDebug() << "[FRPC] ~FRPCManager called, m_autoStopOnExit:" << m_autoStopOnExit
-             << ", m_isRunning:" << m_isRunning << ", m_detached:" << m_detached
-             << ", m_process:" << m_process;
+    qDebug() << "[FRPC] ~FRPCManager called, m_autoStopOnExit:" << m_autoStopOnExit << ", m_isRunning:" << m_isRunning;
     fflush(stdout);
 
-    if (m_detached || m_process == nullptr) {
-        // 进程已分离，不需要做任何处理
-        // QProcess对象已经被分离并置空，进程继续独立运行
-        qDebug() << "[FRPC] ~FRPCManager: process was detached, letting it run independently";
-    } else if (m_autoStopOnExit) {
+    // 使用startDetached启动时，frpc进程已完全独立
+    // 但如果用户设置了autoStopOnExit=true，仍然尝试停止
+    if (m_autoStopOnExit && m_isRunning) {
         stopFRPC();
-    } else {
-        // 未分离且不自动停止
-        qDebug() << "[FRPC] ~FRPCManager: not auto stopping, detaching process";
-        m_process->setParent(nullptr);
-        m_process = nullptr;
     }
 }
 
 void FRPCManager::setAutoStopOnExit(bool enabled)
 {
     m_autoStopOnExit = enabled;
-}
-
-void FRPCManager::detachProcess()
-{
-    qDebug() << "[FRPC] detachProcess called, m_process:" << m_process << ", m_isRunning:" << m_isRunning;
-    if (m_process && m_isRunning) {
-        // 关键步骤：将m_process置为nullptr
-        // 这样析构函数delete m_process时实际上是delete nullptr，是安全的
-        // 但原QProcess对象仍然存在，进程继续运行
-        // 注意：这会导致内存泄漏，但这是唯一能让进程独立运行的方法
-        qDebug() << "[FRPC] detaching: setting m_process to nullptr to prevent auto-kill";
-        m_process->setParent(nullptr);  // 先分离父对象
-        m_process = nullptr;  // 然后将指针置为空，这样析构时不会delete原对象
-        m_detached = true;
-        qDebug() << "[FRPC] process detached successfully";
-    }
 }
 
 FRPCManager* FRPCManager::instance()
@@ -210,81 +185,68 @@ bool FRPCManager::startFRPC()
         return false;
     }
 
-    // 使用QProcess启动
-    m_process->setProgram(frpcPath);
-    m_process->setArguments(QStringList() << "-c" << configPath);
-
-    // 设置工作目录
+    // 使用startDetached启动，使frpc完全独立于应用程序
+    // 这样关闭应用程序时不会影响frpc进程
     QFileInfo fi(frpcPath);
-    m_process->setWorkingDirectory(fi.absolutePath());
+    QString workDir = fi.absolutePath();
 
-    // 不设置日志文件，让日志输出到stdout
-    // 注意：这需要修改配置文件，临时禁用日志文件
+    qDebug() << "[FRPC] Starting with startDetached...";
+    qint64 pid;
+    bool success = QProcess::startDetached(frpcPath, QStringList() << "-c" << configPath, workDir, &pid);
 
-    qDebug() << "[FRPC] Starting process...";
-    m_process->start();
-
-    // 等待启动
-    if (!m_process->waitForStarted(5000)) {
+    if (!success) {
         QString err = "FRPC进程启动失败";
         qDebug() << "[FRPC]" << err;
         emit errorOccurred(err);
         return false;
     }
 
-    qDebug() << "[FRPC] Process started, state:" << m_process->state();
-    m_isRunning = true;
-    m_status = StatusConnecting;
-    emit statusChanged(m_status);
+    qDebug() << "[FRPC] Process started with PID:" << pid;
+    m_frpcPid = pid;  // 保存PID以便后续停止
 
-    qDebug() << "[FRPC] Process started successfully";
+    // 使用固定端口计算（与onProcessStarted中相同）
+    QString deviceName = QHostInfo::localHostName();
+    QString combined = QString::number(m_config.userId) + "_" + deviceName;
+    int hash = qHash(combined) % 30000;
+    int fixedPort = 20000 + qAbs(hash);
+    m_remotePort = fixedPort;
+
+    m_isRunning = true;
+    m_status = StatusConnected;
+    emit statusChanged(m_status);
+    emit remotePortChanged(m_remotePort);
+
+    // 保存配置
+    m_config.remotePort = m_remotePort;
+    m_config.isEnabled = true;
+    m_config.lastUsedTime = QDateTime::currentDateTime();
+    if (m_db) {
+        m_db->saveFRPCConfig(m_config);
+    }
+
+    // 启动心跳定时器
+    m_heartbeatTimer->start(30000);  // 30秒
+
+    qDebug() << "[FRPC] Process started successfully (detached mode), port:" << m_remotePort;
     return true;
 }
 
 void FRPCManager::stopFRPC()
 {
-    qDebug() << "[FRPC] stopFRPC called, m_isRunning:" << m_isRunning << ", m_autoStopOnExit:" << m_autoStopOnExit;
-    qDebug() << "[FRPC] stopFRPC: call stack check - this is from FRPCManager destructor or manual call";
-    fflush(stdout);
-    if (m_autoStopOnExit) {
-        qDebug() << "[FRPC] WARNING: stopFRPC called from destructor with m_autoStopOnExit=true!";
-    }
+    qDebug() << "[FRPC] stopFRPC called, m_isRunning:" << m_isRunning << ", m_frpcPid:" << m_frpcPid;
 
     if (!m_isRunning) {
         qDebug() << "[FRPC] stopFRPC: not running, returning";
         return;
     }
 
-    // 如果进程已分离（m_process为nullptr），我们无法直接停止它
-    // 需要通过其他方式查找并停止进程
-    if (m_process == nullptr) {
-        qDebug() << "[FRPC] stopFRPC: process was detached, trying to find and stop it";
-        // 使用Windows命令查找并停止frpc进程
+    // 使用taskkill /PID 只终止自己启动的frpc进程
+    if (m_frpcPid > 0) {
+        qDebug() << "[FRPC] stopFRPC: using taskkill /PID" << m_frpcPid;
         QProcess p;
-        p.start("taskkill", QStringList() << "/IM" << "frpc.exe" << "/F");
+        p.start("taskkill", QStringList() << "/PID" << QString::number(m_frpcPid) << "/F");
         p.waitForFinished(3000);
-        m_isRunning = false;
-        m_status = StatusDisconnected;
-        m_remotePort = 0;
-        m_heartbeatTimer->stop();
-        emit statusChanged(m_status);
-        emit remotePortChanged(0);
-        emit stopped();
-        qDebug() << "[FRPC] stopFRPC: completed (detached process termination attempted)";
-        return;
-    }
-
-    // 标记为主动停止
-    m_stopping = true;
-    qDebug() << "[FRPC] stopFRPC: m_stopping set to true";
-
-    if (m_process->state() == QProcess::Running) {
-        qDebug() << "[FRPC] stopFRPC: terminating process";
-        m_process->terminate();
-        if (!m_process->waitForFinished(3000)) {
-            qDebug() << "[FRPC] stopFRPC: killing process";
-            m_process->kill();
-        }
+        m_frpcPid = 0;
     }
 
     m_isRunning = false;
@@ -458,8 +420,24 @@ int FRPCManager::parseRemotePort(const QString &output)
 
 void FRPCManager::onHeartbeatTimeout()
 {
-    if (m_isRunning && m_process->state() == QProcess::Running) {
-        // FRPC会自动发送心跳，这里只检查进程状态
+    // 使用tasklist检查frpc进程是否仍在运行
+    QProcess p;
+    p.start("tasklist", QStringList() << "/FI" << "IMAGENAME eq frpc.exe");
+    p.waitForFinished(1000);
+
+    QString output = p.readAllStandardOutput();
+    bool isRunning = output.contains("frpc.exe", Qt::CaseInsensitive);
+
+    if (m_isRunning && !isRunning) {
+        // frpc进程意外退出
+        qDebug() << "[FRPC] Heartbeat: frpc process not found, marking as stopped";
+        m_isRunning = false;
+        m_status = StatusDisconnected;
+        m_remotePort = 0;
+        m_heartbeatTimer->stop();
+        emit statusChanged(m_status);
+        emit remotePortChanged(0);
+        emit stopped();
     }
 }
 
