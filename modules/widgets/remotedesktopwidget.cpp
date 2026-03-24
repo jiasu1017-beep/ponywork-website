@@ -1390,6 +1390,7 @@ void RemoteDesktopWidget::checkHostByAddress(int row, const QHostAddress &addres
         int row = socket->property("row").toInt();
         onHostStatusChecked(row, true);
         socket->disconnectFromHost();
+        socket->deleteLater();
     });
 
     connect(socket, &QTcpSocket::errorOccurred, this, [this, socket](QAbstractSocket::SocketError) {
@@ -1433,7 +1434,7 @@ void RemoteDesktopWidget::startBatchStatusCheck()
 
     for (int row = 0; row < connectionTable->rowCount(); ++row) {
         QTableWidgetItem *hostItem = connectionTable->item(row, 2);
-        QTableWidgetItem *portItem = connectionTable->item(row, 2);
+        QTableWidgetItem *portItem = connectionTable->item(row, 3);
 
         if (hostItem) {
             QString host = hostItem->text();
@@ -1441,7 +1442,7 @@ void RemoteDesktopWidget::startBatchStatusCheck()
 
             if (portItem) {
                 bool ok;
-                int p = portItem->data(Qt::UserRole).toInt(&ok);
+                int p = portItem->text().toInt(&ok);
                 if (ok && p > 0) {
                     port = p;
                 }
