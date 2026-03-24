@@ -2520,7 +2520,7 @@ QWidget *SettingsWidget::createUpdatePage()
     QVBoxLayout *checkLayout = new QVBoxLayout(checkUpdateGroup);
     checkLayout->setSpacing(15);
 
-    QLabel *versionLabel = new QLabel("当前版本: v1.0.3", page);
+    QLabel *versionLabel = new QLabel("当前版本: v1.0.4", page);
     versionLabel->setStyleSheet("font-size: 14px; color: #333; padding: 5px;");
     checkLayout->addWidget(versionLabel);
 
@@ -2685,7 +2685,7 @@ QWidget *SettingsWidget::createAboutPage()
     appNameLabel->setStyleSheet("font-size: 28px; font-weight: bold; color: #6200ea;");
     infoLayout->addWidget(appNameLabel);
 
-    QLabel *versionLabel = new QLabel("版本: v1.0.3", page);
+    QLabel *versionLabel = new QLabel("版本: v1.0.4", page);
     versionLabel->setStyleSheet("font-size: 14px; color: #666;");
     infoLayout->addWidget(versionLabel);
 

@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     a.setApplicationName("小马办公");
     a.setOrganizationName("PonyWork");
-    a.setApplicationVersion("1.0.3");
+    a.setApplicationVersion("1.0.4");
     
     QIcon appIcon(":/img/icon.png");
     a.setWindowIcon(appIcon);
