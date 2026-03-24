@@ -1615,15 +1615,44 @@ void RemoteDesktopWidget::onFRPCAddToList()
     conn.enableDrive = false;
     conn.notes = "";
     conn.category = "";
-    conn.sortOrder = 0;
     conn.isFavorite = false;
 
-    // 保存到数据库
-    qDebug() << "Adding remote desktop:" << conn.name << conn.hostAddress << conn.port;
-    bool addResult = db->addRemoteDesktop(conn);
-    qDebug() << "Add result:" << addResult;
+    // 检查是否已存在（根据 hostAddress + port + username 判断）
+    QList<RemoteDesktopConnection> existingList = db->getAllRemoteDesktops();
+    int existingIndex = -1;
+    for (int i = 0; i < existingList.size(); ++i) {
+        const RemoteDesktopConnection &existing = existingList[i];
+        if (existing.hostAddress == conn.hostAddress &&
+            existing.port == conn.port &&
+            existing.username == conn.username) {
+            existingIndex = i;
+            break;
+        }
+    }
 
-    if (addResult) {
+    bool success = false;
+    if (existingIndex >= 0) {
+        // 已存在，更新现有记录（保留ID和sortOrder）
+        conn.id = existingList[existingIndex].id;
+        conn.sortOrder = existingList[existingIndex].sortOrder;
+        conn.createdTime = existingList[existingIndex].createdTime;
+        conn.lastUsedTime = QDateTime::currentDateTime();
+        success = db->updateRemoteDesktop(conn);
+        qDebug() << "Updating existing remote desktop:" << conn.name << conn.hostAddress << conn.port;
+    } else {
+        // 不存在，添加到列表最后（sortOrder为最大值+1）
+        int maxSortOrder = -1;
+        for (const RemoteDesktopConnection &c : existingList) {
+            if (c.sortOrder > maxSortOrder) {
+                maxSortOrder = c.sortOrder;
+            }
+        }
+        conn.sortOrder = maxSortOrder + 1;
+        success = db->addRemoteDesktop(conn);
+        qDebug() << "Adding new remote desktop:" << conn.name << conn.hostAddress << conn.port;
+    }
+
+    if (success) {
         // 同步到云端
         if (UserManager::instance()->isLoggedIn()) {
             // 获取所有远程桌面连接
