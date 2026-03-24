@@ -22,6 +22,11 @@
 #include <QFile>
 #include <QIODevice>
 #include <QGroupBox>
+#include <QToolBar>
+#include <QSignalMapper>
+#include <QHostAddress>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 #include "modules/core/database.h"
 #include "modules/core/applicationmanager.h"
 #include "modules/core/frpcmanager.h"
@@ -44,6 +49,9 @@ struct RDPConnectionInfo {
     QString errorMessage;
 };
 
+// 分类选项常量（全局）
+const QStringList CATEGORIES = {"未分类", "内网", "外网", "工作", "个人", "测试"};
+
 class RemoteDesktopWidget : public QWidget
 {
     Q_OBJECT
@@ -53,6 +61,9 @@ public:
 
     static void launchRemoteDesktop(const RemoteDesktopConnection &conn, Database *db);
     void refreshConnectionList();
+
+    // Event filter for drag and drop
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 signals:
     void collectionNeedsRefresh();
@@ -75,6 +86,20 @@ private slots:
     void onAddToCollection();
     void onMoveUp();
     void onMoveDown();
+    void onSelectAll();
+    void onSelectInverse();
+    void onBatchDelete();
+    void onBatchFavorite();
+    void onBatchChangeCategory(const QString &category);
+    QList<int> getSelectedConnectionIds();
+    void updateSelectionLabel();
+    void onTableCellChanged(int row, int column);
+    void onCategoryComboBoxChanged(int row, int column, int previousIndex);
+    void onCheckBoxStateChanged(int row, int state);
+    void checkHostStatus(int row, const QString &hostAddress, int port);
+    void checkHostByAddress(int row, const QHostAddress &address, int port);
+    void onHostStatusChecked(int row, bool isOnline);
+    void startBatchStatusCheck();
     void importFromRDPFile(const QString &filePath);
     void importFromJSONFile(const QString &filePath);
 
@@ -116,6 +141,26 @@ private:
     QPushButton *moveUpButton;
     QPushButton *moveDownButton;
     QComboBox *categoryFilter;
+
+    // 新增控件
+    QToolBar *toolBar;
+    QLabel *selectionLabel;
+    QPushButton *selectAllButton;
+    QPushButton *selectInverseButton;
+    QPushButton *batchDeleteButton;
+
+    // 状态检测
+    QNetworkAccessManager *networkManager;
+    QTimer *statusCheckTimer;
+    bool isCheckingStatus;  // 防止并发检测
+    QMap<int, bool> hostStatusMap;  // row -> isOnline
+
+    // 拖拽排序
+    int draggedRow;
+
+    // Event filter for drag and drop
+    void handleRowDrop(int sourceRow, int targetRow);
+    void saveAllRowOrders();
 
     // FRPC相关控件
     QGroupBox *frpcGroupBox;

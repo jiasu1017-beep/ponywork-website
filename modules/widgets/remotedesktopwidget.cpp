@@ -1,4 +1,5 @@
 #include "remotedesktopwidget.h"
+
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -24,6 +25,9 @@
 #include <QDesktopServices>
 #include <QUrl>
 #include <QHostInfo>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QMimeData>
 #include <algorithm>
 #include "modules/user/userapi.h"
 
@@ -33,7 +37,7 @@ void RemoteDesktopWidget::launchRemoteDesktop(const RemoteDesktopConnection &con
 }
 
 RemoteDesktopWidget::RemoteDesktopWidget(Database *db, QWidget *parent)
-    : QWidget(parent), db(db)
+    : QWidget(parent), db(db), draggedRow(-1), isCheckingStatus(false)
 {
     setupUI();
     refreshConnectionList();
@@ -42,6 +46,12 @@ RemoteDesktopWidget::RemoteDesktopWidget(Database *db, QWidget *parent)
 void RemoteDesktopWidget::setupUI()
 {
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
+
+    // 初始化网络管理器
+    networkManager = new QNetworkAccessManager(this);
+    statusCheckTimer = new QTimer(this);
+    statusCheckTimer->setInterval(30000); // 30秒检测一次
+    connect(statusCheckTimer, &QTimer::timeout, this, &RemoteDesktopWidget::startBatchStatusCheck);
 
     QHBoxLayout *topLayout = new QHBoxLayout();
 
@@ -53,12 +63,9 @@ void RemoteDesktopWidget::setupUI()
     QLabel *categoryLabel = new QLabel("分类:");
     categoryFilter = new QComboBox();
     categoryFilter->addItem("全部", "");
-    categoryFilter->addItem("未分类", "未分类");
-    categoryFilter->addItem("内网", "内网");
-    categoryFilter->addItem("外网", "外网");
-    categoryFilter->addItem("工作", "工作");
-    categoryFilter->addItem("个人", "个人");
-    categoryFilter->addItem("测试", "测试");
+    for (const QString &cat : CATEGORIES) {
+        categoryFilter->addItem(cat, cat);
+    }
     connect(categoryFilter, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
         refreshConnectionList();
     });
@@ -71,24 +78,58 @@ void RemoteDesktopWidget::setupUI()
 
     mainLayout->addLayout(topLayout);
 
+    // 添加快速操作工具栏 - 批量操作相关
+    toolBar = new QToolBar();
+    toolBar->setMovable(false);
+    toolBar->setFloatable(false);
+
+    selectAllButton = new QPushButton("全选");
+    connect(selectAllButton, &QPushButton::clicked, this, &RemoteDesktopWidget::onSelectAll);
+    toolBar->addWidget(selectAllButton);
+
+    selectInverseButton = new QPushButton("反选");
+    connect(selectInverseButton, &QPushButton::clicked, this, &RemoteDesktopWidget::onSelectInverse);
+    toolBar->addWidget(selectInverseButton);
+
+    batchDeleteButton = new QPushButton("批量删除");
+    batchDeleteButton->setEnabled(false);
+    connect(batchDeleteButton, &QPushButton::clicked, this, &RemoteDesktopWidget::onBatchDelete);
+    toolBar->addWidget(batchDeleteButton);
+
+    selectionLabel = new QLabel("已选择 0 项");
+    selectionLabel->setStyleSheet("color: #666; padding-left: 10px;");
+    toolBar->addWidget(selectionLabel);
+
+    QWidget *spacer = new QWidget();
+    spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    toolBar->addWidget(spacer);
+
+    mainLayout->addWidget(toolBar);
+
     connectionTable = new QTableWidget();
-    connectionTable->setColumnCount(8);
-    connectionTable->setHorizontalHeaderLabels(QStringList() << "名称" << "主机地址" << "端口" << "用户名" << "分类" << "备注" << "收藏" << "最后使用");
+    connectionTable->setColumnCount(10);
+    connectionTable->setHorizontalHeaderLabels(QStringList() << "" << "名称" << "主机地址" << "端口" << "用户名" << "分类" << "备注" << "收藏" << "状态" << "最后使用");
     connectionTable->horizontalHeader()->setStretchLastSection(false);
     connectionTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
-    connectionTable->setColumnWidth(0, 150);
-    connectionTable->setColumnWidth(1, 250);
-    connectionTable->setColumnWidth(2, 60);
-    connectionTable->setColumnWidth(3, 100);
+    connectionTable->setColumnWidth(0, 30);  // 复选框列
+    connectionTable->setColumnWidth(1, 120);
+    connectionTable->setColumnWidth(2, 180);
+    connectionTable->setColumnWidth(3, 60);
     connectionTable->setColumnWidth(4, 80);
-    connectionTable->setColumnWidth(5, 150);
-    connectionTable->setColumnWidth(6, 50);
-    connectionTable->horizontalHeader()->setSectionResizeMode(7, QHeaderView::Stretch);
+    connectionTable->setColumnWidth(5, 80);
+    connectionTable->setColumnWidth(6, 120);
+    connectionTable->setColumnWidth(7, 40);
+    connectionTable->setColumnWidth(8, 50);
+    connectionTable->horizontalHeader()->setSectionResizeMode(9, QHeaderView::Stretch);
     connectionTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     connectionTable->setSelectionMode(QAbstractItemView::SingleSelection);
     connectionTable->setAlternatingRowColors(true);
     connectionTable->verticalHeader()->setVisible(false);
     connectionTable->setContextMenuPolicy(Qt::CustomContextMenu);
+    connectionTable->setDragEnabled(true);
+    connectionTable->setAcceptDrops(true);
+    connectionTable->setDropIndicatorShown(true);
+    connectionTable->setDragDropMode(QAbstractItemView::InternalMove);
     connectionTable->setStyleSheet(
         "QTableWidget::item:selected {"
         "   background-color: #2196F3;"
@@ -102,14 +143,22 @@ void RemoteDesktopWidget::setupUI()
         "   background-color: #E3F2FD;"
         "}"
     );
+    connectionTable->setSortingEnabled(true);
     connect(connectionTable, &QTableWidget::itemSelectionChanged, this, &RemoteDesktopWidget::onConnectionSelectionChanged);
+    // 双击连接
     connect(connectionTable, &QTableWidget::doubleClicked, this, [this](const QModelIndex &index) {
         Q_UNUSED(index);
         onConnect();
     });
+    // 单击编辑
+    // 单元格变化（用于分类下拉框）
+    connect(connectionTable, &QTableWidget::cellChanged, this, &RemoteDesktopWidget::onTableCellChanged);
     connect(connectionTable, &QTableWidget::customContextMenuRequested, this, &RemoteDesktopWidget::onTableContextMenuRequested);
 
     mainLayout->addWidget(connectionTable);
+
+    // 安装event filter用于拖拽排序
+    connectionTable->installEventFilter(this);
 
     QHBoxLayout *buttonLayout = new QHBoxLayout();
 
@@ -303,6 +352,10 @@ void RemoteDesktopWidget::setupFRPCUI(QVBoxLayout *mainLayout)
 
 void RemoteDesktopWidget::refreshConnectionList()
 {
+    if (!db) {
+        return;
+    }
+
     QList<RemoteDesktopConnection> connections;
     QString searchText = searchEdit->text().trimmed();
     QString categoryFilterText = categoryFilter->currentData().toString();
@@ -332,23 +385,90 @@ void RemoteDesktopWidget::refreshConnectionList()
 
 void RemoteDesktopWidget::loadConnections(const QList<RemoteDesktopConnection> &connections)
 {
+    // 先清理之前的cellWidget，防止内存泄漏
+    int oldRowCount = connectionTable->rowCount();
+    for (int row = 0; row < oldRowCount; ++row) {
+        // 清理复选框列的widget
+        QWidget *checkWidget = connectionTable->cellWidget(row, 0);
+        if (checkWidget) {
+            delete checkWidget;
+        }
+        // 清理分类列的widget
+        QWidget *categoryWidget = connectionTable->cellWidget(row, 5);
+        if (categoryWidget) {
+            delete categoryWidget;
+        }
+    }
+
     connectionTable->setRowCount(0);
+    hostStatusMap.clear();
+    isCheckingStatus = false;
 
     for (const RemoteDesktopConnection &conn : connections) {
         int row = connectionTable->rowCount();
         connectionTable->insertRow(row);
 
-        connectionTable->setItem(row, 0, new QTableWidgetItem(conn.name));
-        connectionTable->setItem(row, 1, new QTableWidgetItem(conn.hostAddress));
-        connectionTable->setItem(row, 2, new QTableWidgetItem(QString::number(conn.port)));
-        connectionTable->setItem(row, 3, new QTableWidgetItem(conn.username));
-        connectionTable->setItem(row, 4, new QTableWidgetItem(conn.category));
-        connectionTable->setItem(row, 5, new QTableWidgetItem(conn.notes));
-        connectionTable->setItem(row, 6, new QTableWidgetItem(conn.isFavorite ? "★" : ""));
-        connectionTable->setItem(row, 7, new QTableWidgetItem(conn.lastUsedTime.toString("yyyy-MM-dd hh:mm")));
+        // 复选框列
+        QWidget *checkBoxWidget = new QWidget();
+        QHBoxLayout *layout = new QHBoxLayout(checkBoxWidget);
+        layout->setAlignment(Qt::AlignCenter);
+        layout->setContentsMargins(0, 0, 0, 0);
+        QCheckBox *checkBox = new QCheckBox();
+        checkBox->setProperty("row", row);
+        layout->addWidget(checkBox);
+        checkBoxWidget->setLayout(layout);
+        connectionTable->setCellWidget(row, 0, checkBoxWidget);
+        // 传递checkBox指针而非row值，避免Lambda捕获过时索引
+        connect(checkBox, &QCheckBox::stateChanged, this, [this](int state) {
+            onCheckBoxStateChanged(-1, state);
+        });
 
-        connectionTable->item(row, 0)->setData(Qt::UserRole, conn.id);
+        connectionTable->setItem(row, 1, new QTableWidgetItem(conn.name));
+        connectionTable->setItem(row, 2, new QTableWidgetItem(conn.hostAddress));
+        connectionTable->setItem(row, 3, new QTableWidgetItem(QString::number(conn.port)));
+        connectionTable->setItem(row, 4, new QTableWidgetItem(conn.username));
+
+        // 分类列 - 使用ComboBox
+        QWidget *categoryWidget = new QWidget();
+        QHBoxLayout *categoryLayout = new QHBoxLayout(categoryWidget);
+        categoryLayout->setAlignment(Qt::AlignCenter);
+        categoryLayout->setContentsMargins(0, 0, 0, 0);
+        QComboBox *categoryCombo = new QComboBox();
+        for (const QString &cat : CATEGORIES) {
+            categoryCombo->addItem(cat, cat);
+        }
+        int categoryIndex = categoryCombo->findData(conn.category);
+        if (categoryIndex >= 0) {
+            categoryCombo->setCurrentIndex(categoryIndex);
+        }
+        categoryCombo->setProperty("row", row);
+        categoryCombo->setProperty("column", 5);
+        categoryLayout->addWidget(categoryCombo);
+        categoryWidget->setLayout(categoryLayout);
+        connectionTable->setCellWidget(row, 5, categoryWidget);
+        connect(categoryCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+                this, [this, row](int index) {
+            onCategoryComboBoxChanged(row, 5, index);
+        });
+
+        connectionTable->setItem(row, 6, new QTableWidgetItem(conn.notes));
+        connectionTable->setItem(row, 7, new QTableWidgetItem(conn.isFavorite ? "★" : ""));
+
+        // 状态列 - 初始为检测中
+        QTableWidgetItem *statusItem = new QTableWidgetItem("⏳");
+        statusItem->setTextAlignment(Qt::AlignCenter);
+        connectionTable->setItem(row, 8, statusItem);
+
+        connectionTable->setItem(row, 9, new QTableWidgetItem(conn.lastUsedTime.toString("yyyy-MM-dd hh:mm")));
+
+        connectionTable->item(row, 1)->setData(Qt::UserRole, conn.id);
+
+        // 保存连接信息用于状态检测
+        connectionTable->item(row, 2)->setData(Qt::UserRole, conn.port);
     }
+
+    // 启动批量状态检测
+    QTimer::singleShot(500, this, &RemoteDesktopWidget::startBatchStatusCheck);
 
     updateConnectionButtons();
 }
@@ -1070,6 +1190,343 @@ void RemoteDesktopWidget::onToggleFavorite()
     }
 }
 
+// 获取选中的连接ID列表（支持多选）
+QList<int> RemoteDesktopWidget::getSelectedConnectionIds()
+{
+    QList<int> ids;
+    for (int row = 0; row < connectionTable->rowCount(); ++row) {
+        QWidget *widget = connectionTable->cellWidget(row, 0);
+        if (widget) {
+            QCheckBox *checkBox = widget->findChild<QCheckBox *>();
+            if (checkBox && checkBox->isChecked()) {
+                int id = connectionTable->item(row, 1)->data(Qt::UserRole).toInt();
+                ids.append(id);
+            }
+        }
+    }
+    return ids;
+}
+
+void RemoteDesktopWidget::onSelectAll()
+{
+    for (int row = 0; row < connectionTable->rowCount(); ++row) {
+        QWidget *widget = connectionTable->cellWidget(row, 0);
+        if (widget) {
+            QCheckBox *checkBox = widget->findChild<QCheckBox *>();
+            if (checkBox) {
+                checkBox->setChecked(true);
+            }
+        }
+    }
+    updateSelectionLabel();
+}
+
+void RemoteDesktopWidget::onSelectInverse()
+{
+    for (int row = 0; row < connectionTable->rowCount(); ++row) {
+        QWidget *widget = connectionTable->cellWidget(row, 0);
+        if (widget) {
+            QCheckBox *checkBox = widget->findChild<QCheckBox *>();
+            if (checkBox) {
+                checkBox->setChecked(!checkBox->isChecked());
+            }
+        }
+    }
+    updateSelectionLabel();
+}
+
+void RemoteDesktopWidget::onCheckBoxStateChanged(int row, int state)
+{
+    Q_UNUSED(state);
+    // 动态获取sender的row，确保正确性
+    QCheckBox *cb = qobject_cast<QCheckBox *>(sender());
+    if (cb) {
+        int currentRow = cb->property("row").toInt();
+        // 同步所有checkbox的row属性，因为行可能变化
+        for (int i = 0; i < connectionTable->rowCount(); ++i) {
+            QWidget *w = connectionTable->cellWidget(i, 0);
+            if (w) {
+                QCheckBox *c = w->findChild<QCheckBox *>();
+                if (c) {
+                    c->setProperty("row", i);
+                }
+            }
+        }
+    }
+    updateSelectionLabel();
+}
+
+void RemoteDesktopWidget::updateSelectionLabel()
+{
+    int count = 0;
+    for (int row = 0; row < connectionTable->rowCount(); ++row) {
+        QWidget *widget = connectionTable->cellWidget(row, 0);
+        if (widget) {
+            QCheckBox *checkBox = widget->findChild<QCheckBox *>();
+            if (checkBox && checkBox->isChecked()) {
+                count++;
+            }
+        }
+    }
+    selectionLabel->setText(QString("已选择 %1 项").arg(count));
+    batchDeleteButton->setEnabled(count > 0);
+}
+
+void RemoteDesktopWidget::onBatchDelete()
+{
+    QList<int> ids = getSelectedConnectionIds();
+    if (ids.isEmpty()) {
+        QMessageBox::information(this, "提示", "请先选择要删除的连接");
+        return;
+    }
+
+    auto reply = QMessageBox::question(this, "确认批量删除",
+        QString("确定要删除选中的 %1 个连接吗？").arg(ids.size()),
+        QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::Yes) {
+        int deletedCount = 0;
+        for (int id : ids) {
+            if (db->deleteRemoteDesktop(id)) {
+                deletedCount++;
+            }
+        }
+        refreshConnectionList();
+        QMessageBox::information(this, "成功", QString("已删除 %1 个连接").arg(deletedCount));
+    }
+}
+
+void RemoteDesktopWidget::onBatchFavorite()
+{
+    QList<int> ids = getSelectedConnectionIds();
+    if (ids.isEmpty()) {
+        QMessageBox::information(this, "提示", "请先选择要收藏的连接");
+        return;
+    }
+
+    for (int id : ids) {
+        RemoteDesktopConnection conn = db->getRemoteDesktopById(id);
+        if (conn.id != -1) {
+            conn.isFavorite = true;
+            db->updateRemoteDesktop(conn);
+        }
+    }
+    refreshConnectionList();
+}
+
+void RemoteDesktopWidget::onBatchChangeCategory(const QString &category)
+{
+    QList<int> ids = getSelectedConnectionIds();
+    if (ids.isEmpty()) {
+        QMessageBox::information(this, "提示", "请先选择要修改分类的连接");
+        return;
+    }
+
+    for (int id : ids) {
+        RemoteDesktopConnection conn = db->getRemoteDesktopById(id);
+        if (conn.id != -1) {
+            conn.category = category;
+            db->updateRemoteDesktop(conn);
+        }
+    }
+    refreshConnectionList();
+}
+
+void RemoteDesktopWidget::onTableCellChanged(int row, int column)
+{
+    Q_UNUSED(row);
+    Q_UNUSED(column);
+    // 单元格变化时可以添加其他处理
+}
+
+void RemoteDesktopWidget::onCategoryComboBoxChanged(int row, int column, int previousIndex)
+{
+    Q_UNUSED(previousIndex);
+
+    if (column == 5) {
+        QWidget *widget = connectionTable->cellWidget(row, 5);
+        if (widget) {
+            QComboBox *combo = widget->findChild<QComboBox *>();
+            if (combo) {
+                QString newCategory = combo->currentData().toString();
+                int id = connectionTable->item(row, 1)->data(Qt::UserRole).toInt();
+
+                RemoteDesktopConnection conn = db->getRemoteDesktopById(id);
+                if (conn.id != -1 && conn.category != newCategory) {
+                    conn.category = newCategory;
+                    db->updateRemoteDesktop(conn);
+                }
+            }
+        }
+    }
+}
+
+// 主机状态检测
+void RemoteDesktopWidget::checkHostStatus(int row, const QString &hostAddress, int port)
+{
+    QHostAddress address;
+    if (!address.setAddress(hostAddress)) {
+        // 如果不是有效IP地址，尝试DNS解析
+        QHostInfo::lookupHost(hostAddress, this, [this, row, port](const QHostInfo &info) {
+            if (info.error() == QHostInfo::NoError && !info.addresses().isEmpty()) {
+                checkHostByAddress(row, info.addresses().first(), port);
+            } else {
+                onHostStatusChecked(row, false);
+            }
+        });
+    } else {
+        checkHostByAddress(row, address, port);
+    }
+}
+
+void RemoteDesktopWidget::checkHostByAddress(int row, const QHostAddress &address, int port)
+{
+    QTcpSocket *socket = new QTcpSocket(this);
+    socket->setProperty("row", row);
+
+    int targetPort = (port > 0) ? port : 3389;
+
+    connect(socket, &QTcpSocket::connected, this, [this, socket]() {
+        int row = socket->property("row").toInt();
+        onHostStatusChecked(row, true);
+        socket->disconnectFromHost();
+    });
+
+    connect(socket, &QTcpSocket::errorOccurred, this, [this, socket](QAbstractSocket::SocketError) {
+        int row = socket->property("row").toInt();
+        onHostStatusChecked(row, false);
+        socket->deleteLater();
+    });
+
+    connect(socket, &QTcpSocket::disconnected, this, [socket]() {
+        socket->deleteLater();
+    });
+
+    socket->connectToHost(address, targetPort);
+}
+
+void RemoteDesktopWidget::onHostStatusChecked(int row, bool isOnline)
+{
+    if (row < 0 || row >= connectionTable->rowCount()) return;
+
+    hostStatusMap[row] = isOnline;
+
+    QTableWidgetItem *statusItem = connectionTable->item(row, 8);
+    if (statusItem) {
+        if (isOnline) {
+            statusItem->setText("🟢");
+            statusItem->setToolTip("在线");
+        } else {
+            statusItem->setText("🔴");
+            statusItem->setToolTip("离线");
+        }
+    }
+}
+
+void RemoteDesktopWidget::startBatchStatusCheck()
+{
+    // 防止并发检测
+    if (isCheckingStatus) {
+        return;
+    }
+    isCheckingStatus = true;
+
+    for (int row = 0; row < connectionTable->rowCount(); ++row) {
+        QTableWidgetItem *hostItem = connectionTable->item(row, 2);
+        QTableWidgetItem *portItem = connectionTable->item(row, 2);
+
+        if (hostItem) {
+            QString host = hostItem->text();
+            int port = 3389;
+
+            if (portItem) {
+                bool ok;
+                int p = portItem->data(Qt::UserRole).toInt(&ok);
+                if (ok && p > 0) {
+                    port = p;
+                }
+            }
+
+            // 设置为检测中状态
+            QTableWidgetItem *statusItem = connectionTable->item(row, 8);
+            if (statusItem) {
+                statusItem->setText("⏳");
+                statusItem->setToolTip("检测中...");
+            }
+
+            // 延迟检测，避免同时发起太多连接
+            QTimer::singleShot(row * 200, this, [this, row, host, port]() {
+                checkHostStatus(row, host, port);
+            });
+        }
+    }
+
+    // 启动定时器周期性检测
+    if (!statusCheckTimer->isActive()) {
+        statusCheckTimer->start();
+    }
+
+    // 检测完成后重置状态（延迟后执行）
+    QTimer::singleShot(connectionTable->rowCount() * 200 + 5000, this, [this]() {
+        isCheckingStatus = false;
+    });
+}
+
+// Event filter for drag and drop handling
+bool RemoteDesktopWidget::eventFilter(QObject *obj, QEvent *event)
+{
+    if (obj == connectionTable) {
+        if (event->type() == QEvent::Drop) {
+            QDropEvent *dropEvent = static_cast<QDropEvent *>(event);
+            if (dropEvent) {
+                // 拖拽完成，这里不需要额外处理
+                // QTableWidget的InternalMove已经处理了行的移动
+                // 我们需要在drop完成后更新数据库中的排序
+                QTimer::singleShot(100, this, [this]() {
+                    saveAllRowOrders();
+                });
+            }
+        }
+    }
+    return QWidget::eventFilter(obj, event);
+}
+
+void RemoteDesktopWidget::handleRowDrop(int sourceRow, int targetRow)
+{
+    if (sourceRow == targetRow) return;
+    if (sourceRow < 0 || targetRow < 0) return;
+    if (sourceRow >= connectionTable->rowCount() || targetRow >= connectionTable->rowCount()) return;
+
+    // 交换两行的sortOrder
+    int sourceId = connectionTable->item(sourceRow, 1)->data(Qt::UserRole).toInt();
+    int targetId = connectionTable->item(targetRow, 1)->data(Qt::UserRole).toInt();
+
+    RemoteDesktopConnection sourceConn = db->getRemoteDesktopById(sourceId);
+    RemoteDesktopConnection targetConn = db->getRemoteDesktopById(targetId);
+
+    if (sourceConn.id == -1 || targetConn.id == -1) return;
+
+    int tempOrder = sourceConn.sortOrder;
+    sourceConn.sortOrder = targetConn.sortOrder;
+    targetConn.sortOrder = tempOrder;
+
+    db->updateRemoteDesktop(sourceConn);
+    db->updateRemoteDesktop(targetConn);
+}
+
+void RemoteDesktopWidget::saveAllRowOrders()
+{
+    // 保存所有行的排序顺序
+    for (int row = 0; row < connectionTable->rowCount(); ++row) {
+        int id = connectionTable->item(row, 1)->data(Qt::UserRole).toInt();
+        RemoteDesktopConnection conn = db->getRemoteDesktopById(id);
+        if (conn.id != -1) {
+            conn.sortOrder = row;
+            db->updateRemoteDesktop(conn);
+        }
+    }
+}
+
 RemoteDesktopConnection RemoteDesktopWidget::getSelectedConnection()
 {
     QList<QTableWidgetItem *> selected = connectionTable->selectedItems();
@@ -1080,7 +1537,7 @@ RemoteDesktopConnection RemoteDesktopWidget::getSelectedConnection()
     }
 
     int row = selected.first()->row();
-    int id = connectionTable->item(row, 0)->data(Qt::UserRole).toInt();
+    int id = connectionTable->item(row, 1)->data(Qt::UserRole).toInt();
     return db->getRemoteDesktopById(id);
 }
 
@@ -1145,12 +1602,9 @@ void RemoteDesktopDialog::setupUI()
     domainEdit = new QLineEdit();
     domainEdit->setPlaceholderText("域（可选）");
     categoryCombo = new QComboBox();
-    categoryCombo->addItem("未分类", "未分类");
-    categoryCombo->addItem("内网", "内网");
-    categoryCombo->addItem("外网", "外网");
-    categoryCombo->addItem("工作", "工作");
-    categoryCombo->addItem("个人", "个人");
-    categoryCombo->addItem("测试", "测试");
+    for (const QString &cat : CATEGORIES) {
+        categoryCombo->addItem(cat, cat);
+    }
     notesEdit = new QTextEdit();
     notesEdit->setPlaceholderText("备注信息（可选）");
     notesEdit->setMaximumHeight(80);
