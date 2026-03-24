@@ -212,6 +212,7 @@ bool FRPCManager::startFRPC()
 
     qDebug() << "[FRPC] Process started with PID:" << pid;
     m_frpcPid = pid;  // 保存PID以便后续停止
+    qDebug() << "[FRPC] Saved m_frpcPid:" << m_frpcPid;
 
     // 使用固定端口计算（与onProcessStarted中相同）
     QString deviceName = QHostInfo::localHostName();
@@ -235,6 +236,7 @@ bool FRPCManager::startFRPC()
 
     // 启动心跳定时器
     m_heartbeatTimer->start(30000);  // 30秒
+    qDebug() << "[FRPC] Heartbeat timer started, interval: 30000ms";
 
     qDebug() << "[FRPC] Process started successfully (detached mode), port:" << m_remotePort;
     return true;
@@ -277,17 +279,22 @@ void FRPCManager::stopFRPC()
 
 void FRPCManager::onHeartbeatTimeout()
 {
-    // 检查特定的frpc进程是否仍在运行
+    // 使用wmic精确查找特定PID的进程
     if (m_frpcPid <= 0) {
         return;
     }
 
     QProcess p;
-    p.start("tasklist", QStringList() << "/PID" << QString::number(m_frpcPid));
-    p.waitForFinished(1000);
+    p.start("wmic", QStringList() << "process" << "where" << QString("ProcessId=%1").arg(m_frpcPid) << "get" << "Name,ProcessId");
+    p.waitForFinished(2000);
 
     QString output = p.readAllStandardOutput();
-    bool isRunning = output.contains(QString::number(m_frpcPid));
+    qDebug() << "[FRPC] Heartbeat: checking PID" << m_frpcPid << ", output:" << output;
+
+    // 检查输出中是否包含我们的PID和frpc.exe
+    bool isRunning = output.contains(QString::number(m_frpcPid)) &&
+                     output.contains("frpc.exe", Qt::CaseInsensitive);
+    qDebug() << "[FRPC] Heartbeat: isRunning =" << isRunning;
 
     if (m_isRunning && !isRunning) {
         // frpc进程意外退出
