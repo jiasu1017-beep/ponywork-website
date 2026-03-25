@@ -557,9 +557,9 @@ mkdir -p admin-panel data
 **方法 A: 使用 SCP**
 ```bash
 # 在本地 PowerShell 执行
-scp F:\00AI\Test\server\admin-server.js root@8.163.37.74:/var/www/ponywork-admin/
-scp F:\00AI\Test\server\package.json root@8.163.37.74:/var/www/ponywork-admin/
-scp -r F:\00AI\Test\server\admin-panel root@8.163.37.74:/var/www/ponywork-admin/
+scp F:\00AI\PonyWork\server\admin-server.js root@8.163.37.74:/var/www/ponywork-admin/
+scp F:\00AI\PonyWork\server\package.json root@8.163.37.74:/var/www/ponywork-admin/
+scp -r F:\00AI\PonyWork\server\admin-panel root@8.163.37.74:/var/www/ponywork-admin/
 ```
 
 **方法 B: 使用 WinSCP**
@@ -631,7 +631,7 @@ curl http://localhost:8080/api/admin/stats
 
 ```bash
 # 1. 上传新文件（使用 WinSCP 或 SCP）
-scp F:\00AI\Test\server\admin-server.js root@8.163.37.74:/var/www/ponywork-admin/
+scp F:\00AI\PonyWork\server\admin-server.js root@8.163.37.74:/var/www/ponywork-admin/
 
 # 2. SSH 连接服务器
 ssh root@8.163.37.74
@@ -1217,7 +1217,7 @@ pm2 plus
 
 ### 联系方式
 
-- **项目地址**: `F:\00AI\Test`
+- **项目地址**: `F:\00AI\PonyWork`
 - **服务器**: `8.163.37.74`
 - **文档**: 本文档
 
