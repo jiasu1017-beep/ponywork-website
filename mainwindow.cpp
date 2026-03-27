@@ -178,6 +178,12 @@ void MainWindow::setupUI()
     // 自动启动远程桌面（如果配置了自动启动）
     if (db->getRemoteDesktopAutoStart()) {
         FRPCConfig config = FRPCManager::instance()->getConfig();
+        // 先检测是否有已运行的 frpc 进程
+        if (!FRPCManager::instance()->isRunning()) {
+            bool existingRunning = FRPCManager::instance()->checkExistingProcess();
+            qDebug() << "[MainWindow] checkExistingProcess result:" << existingRunning;
+        }
+        // 如果检测后不在运行且配置为启用，则尝试启动
         if (config.isEnabled && !FRPCManager::instance()->isRunning()) {
             if (!FRPCManager::instance()->startFRPC()) {
                 statusBar()->showMessage("自动启动远程桌面失败", 5000);

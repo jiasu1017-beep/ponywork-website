@@ -117,11 +117,12 @@ struct FRPCConfig {
     int remotePort;
     bool isEnabled;
     QString deviceName;
+    qint64 frpcPid;          // 记录启动的frpc进程PID，用于检测重复启动
     QDateTime createdTime;
     QDateTime lastUsedTime;
 
     FRPCConfig() : id(0), userId(0), serverPort(7000), localPort(3389),
-                  remotePort(0), isEnabled(false) {}
+                  remotePort(0), isEnabled(false), frpcPid(0) {}
 };
 
 struct ShortcutStat {

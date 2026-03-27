@@ -1105,6 +1105,7 @@ QJsonObject frpcConfigToJson(const FRPCConfig &config)
     obj["remotePort"] = config.remotePort;
     obj["isEnabled"] = config.isEnabled;
     obj["deviceName"] = config.deviceName;
+    obj["frpcPid"] = config.frpcPid;
     obj["createdTime"] = config.createdTime.toString(Qt::ISODate);
     obj["lastUsedTime"] = config.lastUsedTime.toString(Qt::ISODate);
     return obj;
@@ -1121,6 +1122,7 @@ FRPCConfig jsonToFRPCConfig(const QJsonObject &obj)
     config.remotePort = obj["remotePort"].toInt(0);
     config.isEnabled = obj["isEnabled"].toBool(false);
     config.deviceName = obj["deviceName"].toString();
+    config.frpcPid = static_cast<qint64>(obj["frpcPid"].toInt(0));
     config.createdTime = QDateTime::fromString(obj["createdTime"].toString(), Qt::ISODate);
     config.lastUsedTime = QDateTime::fromString(obj["lastUsedTime"].toString(), Qt::ISODate);
     return config;
