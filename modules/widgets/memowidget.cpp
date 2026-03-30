@@ -136,6 +136,7 @@ void MemoWidget::setupUI()
     // 内容区域容器 - 动态生成段落
     contentContainer = new QWidget(this);
     contentContainer->setStyleSheet("background: #FAFAFA; border: 1px solid #DDDDDD; border-radius: 4px;");
+    contentContainer->setContextMenuPolicy(Qt::CustomContextMenu);
     QVBoxLayout *contentLayout = new QVBoxLayout(contentContainer);
     contentLayout->setContentsMargins(8, 8, 8, 8);
     contentLayout->setSpacing(8);
@@ -191,6 +192,7 @@ void MemoWidget::setupUI()
     connect(deleteBtn, &QPushButton::clicked, this, &MemoWidget::onDeleteMemo);
     connect(memoList, &QListWidget::itemClicked, this, &MemoWidget::onMemoSelected);
     connect(memoList, &QListWidget::customContextMenuRequested, this, &MemoWidget::onContextMenu);
+    connect(contentContainer, &QWidget::customContextMenuRequested, this, &MemoWidget::onContentContextMenu);
 
     // 同步信号连接
     connect(MemoSync::instance(), &MemoSync::memosUploadComplete, this, &MemoWidget::onSyncComplete);
@@ -207,6 +209,16 @@ void MemoWidget::setButtonStates(bool enabled)
     runBtn->setEnabled(enabled);
     editBtn->setEnabled(enabled);
     deleteBtn->setEnabled(enabled);
+}
+
+QMenu* MemoWidget::createMenu()
+{
+    QMenu *menu = new QMenu(this);
+    menu->setStyleSheet("QMenu { background: #FFFFFF; color: #333333; border: 1px solid #DDDDDD; border-radius: 4px; padding: 4px; min-width: 120px; } "
+                        "QMenu::item { padding: 6px 24px 6px 12px; } "
+                        "QMenu::item:selected { background: #E8F5E9; } "
+                        "QMenu::separator { height: 1px; background: #DDDDDD; margin: 4px 0; }");
+    return menu;
 }
 
 void MemoWidget::loadMemos()
@@ -300,6 +312,9 @@ QString MemoWidget::getTypeIcon(MemoType type)
 QWidget* MemoWidget::createSegmentWidget(const QString &text, int index)
 {
     QWidget *segment = new QWidget(contentContainer);
+    segment->setProperty("segmentText", text);
+    segment->setProperty("segmentIndex", index);
+    segment->setContextMenuPolicy(Qt::CustomContextMenu);
     segment->setStyleSheet("background: #F5F5F5; border-radius: 4px; padding: 4px;");
     QHBoxLayout *segLayout = new QHBoxLayout(segment);
     segLayout->setContentsMargins(4, 2, 4, 2);
@@ -309,6 +324,7 @@ QWidget* MemoWidget::createSegmentWidget(const QString &text, int index)
     textLabel->setStyleSheet("color: #333333; font-size: 13px; background: transparent;");
     textLabel->setWordWrap(true);
     textLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    textLabel->setContextMenuPolicy(Qt::CustomContextMenu);
 
     // 工具条容器 - 初始隐藏
     QWidget *toolbar = new QWidget(segment);
@@ -341,6 +357,12 @@ QWidget* MemoWidget::createSegmentWidget(const QString &text, int index)
 
     // 悬停事件
     segment->installEventFilter(this);
+    connect(segment, &QWidget::customContextMenuRequested, this, [this, segment](const QPoint &pos) {
+        onSegmentContextMenu(segment, pos);
+    });
+    connect(textLabel, &QWidget::customContextMenuRequested, this, [this, segment](const QPoint &pos) {
+        onSegmentContextMenu(segment, pos);
+    });
 
     // 按钮连接
     connect(copyBtn, &QPushButton::clicked, this, [this, text, copyBtn]() {
@@ -541,14 +563,43 @@ void MemoWidget::onContextMenu(const QPoint &pos)
     QListWidgetItem *item = memoList->itemAt(pos);
     if (!item) return;
 
-    QMenu menu(this);
-    menu.setStyleSheet("QMenu { background: #FFFFFF; color: #333333; border: 1px solid #DDDDDD; border-radius: 4px; padding: 4px; } QMenu::item { padding: 6px 20px; } QMenu::item:selected { background: #E8F5E9; }");
+    QMenu *menu = createMenu();
 
-    menu.addAction("复制", this, &MemoWidget::onCopyContent);
-    menu.addAction("运行", this, &MemoWidget::onRunCommand);
-    menu.addSeparator();
-    menu.addAction("编辑", this, &MemoWidget::onEditMemo);
-    menu.addAction("删除", this, &MemoWidget::onDeleteMemo);
+    menu->addAction("复制", this, &MemoWidget::onCopyContent);
+    menu->addAction("运行", this, &MemoWidget::onRunCommand);
+    menu->addSeparator();
+    menu->addAction("编辑", this, &MemoWidget::onEditMemo);
+    menu->addAction("删除", this, &MemoWidget::onDeleteMemo);
 
-    menu.exec(memoList->mapToGlobal(pos));
+    menu->exec(memoList->mapToGlobal(pos));
+    menu->deleteLater();
+}
+
+void MemoWidget::onContentContextMenu(const QPoint &pos)
+{
+    QMenu *menu = createMenu();
+
+    menu->addAction("复制全部", this, &MemoWidget::onCopyContent);
+    menu->addAction("运行全部", this, &MemoWidget::onRunCommand);
+
+    menu->exec(contentContainer->mapToGlobal(pos));
+    menu->deleteLater();
+}
+
+void MemoWidget::onSegmentContextMenu(QWidget *segment, const QPoint &pos)
+{
+    QString text = segment->property("segmentText").toString();
+
+    QMenu *menu = createMenu();
+
+    menu->addAction("复制", this, [this, text]() {
+        QClipboard *clipboard = QApplication::clipboard();
+        clipboard->setText(text);
+    });
+    menu->addAction("运行", this, [this, text]() {
+        runInPowerShell(text);
+    });
+
+    menu->exec(segment->mapToGlobal(pos));
+    menu->deleteLater();
 }

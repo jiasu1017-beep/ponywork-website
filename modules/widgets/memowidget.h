@@ -66,6 +66,8 @@ private slots:
     void onSyncComplete();
     void onSyncFailed(const QString &error);
     void onContextMenu(const QPoint &pos);
+    void onContentContextMenu(const QPoint &pos);
+    void onSegmentContextMenu(QWidget *segment, const QPoint &pos);
 
 private:
     void setupUI();
@@ -75,6 +77,7 @@ private:
     QString getTypeIcon(MemoType type);
     bool runInPowerShell(const QString &command);
     void setButtonStates(bool enabled);
+    QMenu* createMenu();
 
     Database *db;
     QListWidget *memoList;
