@@ -116,6 +116,7 @@ void MemoWidget::setupUI()
 
     memoList = new QListWidget(this);
     memoList->setStyleSheet("QListWidget { background: #FFFFFF; border: 1px solid #DDDDDD; border-radius: 6px; padding: 4px; color: #333333; font-size: 13px; } QListWidget::item { padding: 8px 10px; margin: 2px 0; border-radius: 4px; color: #333333; } QListWidget::item:selected { background: #4CAF50; color: white; } QListWidget::item:hover { background: #E8F5E9; } QListWidget::item:selected:hover { background: #45a049; }");
+    memoList->setContextMenuPolicy(Qt::CustomContextMenu);
     listLayout->addWidget(memoList);
 
     // 右侧详情
@@ -129,8 +130,8 @@ void MemoWidget::setupUI()
     typeLabel = new QLabel("选择一条备忘录查看详情", this);
     typeLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #333333; padding: 4px 0;");
 
-    QLabel *contentLabel = new QLabel("内容:", this);
-    contentLabel->setStyleSheet("color: #666666; font-size: 12px; padding-top: 6px;");
+    //QLabel *contentLabel = new QLabel("内容:", this);
+    //contentLabel->setStyleSheet("color: #666666; font-size: 12px; padding-top: 6px;");
 
     // 内容区域容器 - 动态生成段落
     contentContainer = new QWidget(this);
@@ -189,6 +190,7 @@ void MemoWidget::setupUI()
     connect(editBtn, &QPushButton::clicked, this, &MemoWidget::onEditMemo);
     connect(deleteBtn, &QPushButton::clicked, this, &MemoWidget::onDeleteMemo);
     connect(memoList, &QListWidget::itemClicked, this, &MemoWidget::onMemoSelected);
+    connect(memoList, &QListWidget::customContextMenuRequested, this, &MemoWidget::onContextMenu);
 
     // 同步信号连接
     connect(MemoSync::instance(), &MemoSync::memosUploadComplete, this, &MemoWidget::onSyncComplete);
@@ -348,7 +350,7 @@ QWidget* MemoWidget::createSegmentWidget(const QString &text, int index)
         // 临时显示提示
         QLabel *tip = new QLabel(contentContainer);
         tip->setText("已复制到剪贴板");
-        tip->setStyleSheet("color: #4CAF50; background: #2D2D2D; padding: 6px 12px; border-radius: 4px; font-size: 12px;");
+        tip->setStyleSheet("color: #4CAF50; background: #FFFFFF; border: 1px solid #4CAF50; padding: 6px 12px; border-radius: 4px; font-size: 12px;");
         tip->setAlignment(Qt::AlignCenter);
         tip->setWindowFlags(Qt::ToolTip);
         tip->move(copyBtn->mapToGlobal(QPoint(0, 0)).x() - 40, copyBtn->mapToGlobal(QPoint(0, 0)).y() - 30);
@@ -458,7 +460,7 @@ void MemoWidget::onCopyContent()
 
     // 提示
     QLabel *tipLabel = new QLabel("已复制到剪贴板", this);
-    tipLabel->setStyleSheet("color: #4CAF50; background: #2D2D2D; padding: 8px 16px; border-radius: 4px;");
+    tipLabel->setStyleSheet("color: #4CAF50; background: #FFFFFF; border: 1px solid #4CAF50; padding: 8px 16px; border-radius: 4px;");
     tipLabel->setAlignment(Qt::AlignCenter);
 
     // 显示临时提示
@@ -532,4 +534,21 @@ void MemoWidget::onSyncComplete()
 void MemoWidget::onSyncFailed(const QString &error)
 {
     qDebug() << "Memo sync failed:" << error;
+}
+
+void MemoWidget::onContextMenu(const QPoint &pos)
+{
+    QListWidgetItem *item = memoList->itemAt(pos);
+    if (!item) return;
+
+    QMenu menu(this);
+    menu.setStyleSheet("QMenu { background: #FFFFFF; color: #333333; border: 1px solid #DDDDDD; border-radius: 4px; padding: 4px; } QMenu::item { padding: 6px 20px; } QMenu::item:selected { background: #E8F5E9; }");
+
+    menu.addAction("复制", this, &MemoWidget::onCopyContent);
+    menu.addAction("运行", this, &MemoWidget::onRunCommand);
+    menu.addSeparator();
+    menu.addAction("编辑", this, &MemoWidget::onEditMemo);
+    menu.addAction("删除", this, &MemoWidget::onDeleteMemo);
+
+    menu.exec(memoList->mapToGlobal(pos));
 }

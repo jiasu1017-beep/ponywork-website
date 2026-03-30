@@ -13,6 +13,7 @@
 #include <QComboBox>
 #include <QListWidget>
 #include <QListWidgetItem>
+#include <QMenu>
 #include <QDialog>
 #include <QFormLayout>
 #include <QCheckBox>
@@ -64,6 +65,7 @@ private slots:
     void onSyncMemos();
     void onSyncComplete();
     void onSyncFailed(const QString &error);
+    void onContextMenu(const QPoint &pos);
 
 private:
     void setupUI();
