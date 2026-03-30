@@ -146,7 +146,7 @@ void MemoWidget::setupUI()
     descLabel->setStyleSheet("color: #888888; font-size: 12px; padding-top: 4px;");
 
     detailLayout->addWidget(typeLabel);
-    detailLayout->addWidget(contentLabel);
+    //detailLayout->addWidget(contentLabel);
     detailLayout->addWidget(contentContainer);
     detailLayout->addWidget(descLabel);
 
@@ -210,6 +210,11 @@ void MemoWidget::setButtonStates(bool enabled)
 void MemoWidget::loadMemos()
 {
     updateMemoList();
+    // 自动选择第一条
+    if (memoList->count() > 0) {
+        memoList->setCurrentRow(0);
+        onMemoSelected();
+    }
 }
 
 void MemoWidget::updateMemoList()
