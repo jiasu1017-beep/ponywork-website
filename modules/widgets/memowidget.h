@@ -78,9 +78,8 @@ private:
     QListWidget *memoList;
     QLabel *titleLabel;
     QLabel *typeLabel;
-    QLabel *contentLabel;
     QLabel *descLabel;
-    QTextEdit *contentEdit;
+    QWidget *contentContainer;
 
     QPushButton *copyBtn;
     QPushButton *runBtn;
@@ -88,6 +87,11 @@ private:
     QPushButton *deleteBtn;
 
     QString currentMemoId;
+    QList<QWidget*> contentSegments;
+
+private:
+    QWidget* createSegmentWidget(const QString &text, int index);
+    bool eventFilter(QObject *watched, QEvent *event) override;
 };
 
 #endif // MEMOWIDGET_H

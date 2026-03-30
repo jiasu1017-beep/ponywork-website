@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QTimer>
 #include <QJsonArray>
+#include <QEvent>
 
 // MemoDialog 实现
 MemoDialog::MemoDialog(Memo *memo, QWidget *parent)
@@ -128,13 +129,17 @@ void MemoWidget::setupUI()
     typeLabel = new QLabel("选择一条备忘录查看详情", this);
     typeLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #333333; padding: 4px 0;");
 
-    contentLabel = new QLabel("内容:", this);
+    QLabel *contentLabel = new QLabel("内容:", this);
     contentLabel->setStyleSheet("color: #666666; font-size: 12px; padding-top: 6px;");
 
-    contentEdit = new QTextEdit(this);
-    contentEdit->setReadOnly(true);
-    contentEdit->setPlaceholderText("选择备忘录查看内容");
-    contentEdit->setStyleSheet("QTextEdit { background: #FAFAFA; border: 1px solid #DDDDDD; border-radius: 4px; padding: 8px; color: #333333; font-size: 13px; }");
+    // 内容区域容器 - 动态生成段落
+    contentContainer = new QWidget(this);
+    contentContainer->setStyleSheet("background: #FAFAFA; border: 1px solid #DDDDDD; border-radius: 4px;");
+    QVBoxLayout *contentLayout = new QVBoxLayout(contentContainer);
+    contentLayout->setContentsMargins(8, 8, 8, 8);
+    contentLayout->setSpacing(8);
+    contentLayout->addWidget(new QLabel("选择备忘录查看内容", contentContainer));
+    contentLayout->itemAt(0)->widget()->setStyleSheet("color: #AAAAAA; font-size: 13px;");
 
     descLabel = new QLabel("选择备忘录查看详情", this);
     descLabel->setObjectName("descLabel");
@@ -142,9 +147,8 @@ void MemoWidget::setupUI()
 
     detailLayout->addWidget(typeLabel);
     detailLayout->addWidget(contentLabel);
-    detailLayout->addWidget(contentEdit);
+    detailLayout->addWidget(contentContainer);
     detailLayout->addWidget(descLabel);
-    // 移除 stretch，减小下方空白
 
     splitter->addWidget(listWidget);
     splitter->addWidget(detailWidget);
@@ -238,9 +242,41 @@ void MemoWidget::onMemoSelected()
 void MemoWidget::showMemoDetail(const Memo &memo)
 {
     typeLabel->setText(getTypeIcon(memo.type) + " " + memo.name);
-    contentEdit->setPlainText(memo.content);
     descLabel->setText(memo.description.isEmpty() ? "" : "描述: " + memo.description);
 
+    // 清理旧段落
+    for (QWidget *seg : contentSegments) {
+        seg->deleteLater();
+    }
+    contentSegments.clear();
+
+    // 清空内容容器
+    QVBoxLayout *contentLayout = qobject_cast<QVBoxLayout*>(contentContainer->layout());
+    while (contentLayout->count() > 0) {
+        QLayoutItem *item = contentLayout->takeAt(0);
+        if (item->widget()) item->widget()->deleteLater();
+        delete item;
+    }
+    contentLayout->setSpacing(8);
+
+    // 分段内容 - 按空行分割
+    QStringList paragraphs = memo.content.split("\n\n", Qt::SkipEmptyParts);
+    if (paragraphs.isEmpty()) {
+        QLabel *emptyLabel = new QLabel("无内容", contentContainer);
+        emptyLabel->setStyleSheet("color: #AAAAAA; font-size: 13px;");
+        contentLayout->addWidget(emptyLabel);
+    } else {
+        for (int i = 0; i < paragraphs.size(); ++i) {
+            QString text = paragraphs[i].trimmed();
+            if (!text.isEmpty()) {
+                QWidget *segment = createSegmentWidget(text, i);
+                contentLayout->addWidget(segment);
+                contentSegments.append(segment);
+            }
+        }
+    }
+
+    contentLayout->addStretch();
     setButtonStates(true);
 }
 
@@ -252,6 +288,99 @@ QString MemoWidget::getTypeIcon(MemoType type)
     case MemoType_Other: return "📝";
     default: return "📝";
     }
+}
+
+QWidget* MemoWidget::createSegmentWidget(const QString &text, int index)
+{
+    QWidget *segment = new QWidget(contentContainer);
+    segment->setStyleSheet("background: #F5F5F5; border-radius: 4px; padding: 4px;");
+    QHBoxLayout *segLayout = new QHBoxLayout(segment);
+    segLayout->setContentsMargins(4, 2, 4, 2);
+    segLayout->setSpacing(4);
+
+    QLabel *textLabel = new QLabel(text, segment);
+    textLabel->setStyleSheet("color: #333333; font-size: 13px; background: transparent;");
+    textLabel->setWordWrap(true);
+    textLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+    // 工具条容器 - 初始隐藏
+    QWidget *toolbar = new QWidget(segment);
+    toolbar->setMaximumWidth(80);
+    toolbar->setStyleSheet("background: rgba(50,50,50,0.9); border-radius: 4px;");
+    QHBoxLayout *toolLayout = new QHBoxLayout(toolbar);
+    toolLayout->setContentsMargins(4, 2, 4, 2);
+    toolLayout->setSpacing(4);
+
+    QPushButton *copyBtn = new QPushButton("📋", toolbar);
+    copyBtn->setFixedSize(28, 24);
+    copyBtn->setStyleSheet("QPushButton { background: transparent; border: none; color: white; font-size: 12px; } QPushButton:hover { background: rgba(255,255,255,0.2); border-radius: 3px; }");
+    copyBtn->setCursor(Qt::PointingHandCursor);
+    copyBtn->setToolTip("复制");
+
+    QPushButton *runBtn = new QPushButton("▶", toolbar);
+    runBtn->setFixedSize(28, 24);
+    runBtn->setStyleSheet("QPushButton { background: transparent; border: none; color: white; font-size: 12px; } QPushButton:hover { background: rgba(255,255,255,0.2); border-radius: 3px; }");
+    runBtn->setCursor(Qt::PointingHandCursor);
+    runBtn->setToolTip("运行");
+
+    toolLayout->addWidget(copyBtn);
+    toolLayout->addWidget(runBtn);
+
+    segLayout->addWidget(textLabel, 1);
+    segLayout->addWidget(toolbar);
+
+    // 隐藏工具条
+    toolbar->setVisible(false);
+
+    // 悬停事件
+    segment->installEventFilter(this);
+
+    // 按钮连接
+    connect(copyBtn, &QPushButton::clicked, this, [this, text, copyBtn]() {
+        QClipboard *clipboard = QApplication::clipboard();
+        clipboard->setText(text);
+
+        // 临时显示提示
+        QLabel *tip = new QLabel(contentContainer);
+        tip->setText("已复制到剪贴板");
+        tip->setStyleSheet("color: #4CAF50; background: #2D2D2D; padding: 6px 12px; border-radius: 4px; font-size: 12px;");
+        tip->setAlignment(Qt::AlignCenter);
+        tip->setWindowFlags(Qt::ToolTip);
+        tip->move(copyBtn->mapToGlobal(QPoint(0, 0)).x() - 40, copyBtn->mapToGlobal(QPoint(0, 0)).y() - 30);
+        tip->show();
+        QTimer::singleShot(1500, tip, &QLabel::deleteLater);
+    });
+
+    connect(runBtn, &QPushButton::clicked, this, [this, text]() {
+        runInPowerShell(text);
+    });
+
+    return segment;
+}
+
+bool MemoWidget::eventFilter(QObject *watched, QEvent *event)
+{
+    if (event->type() == QEvent::Enter) {
+        QWidget *segment = qobject_cast<QWidget*>(watched);
+        if (segment) {
+            // 找到工具条并显示
+            QHBoxLayout *layout = qobject_cast<QHBoxLayout*>(segment->layout());
+            if (layout && layout->count() > 1) {
+                QWidget *toolbar = layout->itemAt(1)->widget();
+                if (toolbar) toolbar->setVisible(true);
+            }
+        }
+    } else if (event->type() == QEvent::Leave) {
+        QWidget *segment = qobject_cast<QWidget*>(watched);
+        if (segment) {
+            QHBoxLayout *layout = qobject_cast<QHBoxLayout*>(segment->layout());
+            if (layout && layout->count() > 1) {
+                QWidget *toolbar = layout->itemAt(1)->widget();
+                if (toolbar) toolbar->setVisible(false);
+            }
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }
 
 void MemoWidget::onAddMemo()
