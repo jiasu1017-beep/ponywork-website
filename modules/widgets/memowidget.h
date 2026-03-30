@@ -5,6 +5,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
+#include <QSplitter>
 #include <QLabel>
 #include <QPushButton>
 #include <QLineEdit>
@@ -20,6 +21,7 @@
 #include <QProcess>
 #include <QDebug>
 #include "modules/core/database.h"
+#include "modules/user/userapi.h"
 
 class MemoDialog : public QDialog
 {
@@ -59,6 +61,9 @@ private slots:
     void onRunCommand();
     void onMemoSelected();
     void onRefreshMemos();
+    void onSyncMemos();
+    void onSyncComplete();
+    void onSyncFailed(const QString &error);
 
 private:
     void setupUI();
@@ -76,7 +81,6 @@ private:
     QLabel *contentLabel;
     QLabel *descLabel;
     QTextEdit *contentEdit;
-    QLabel *emptyLabel;
 
     QPushButton *copyBtn;
     QPushButton *runBtn;

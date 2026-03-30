@@ -180,4 +180,32 @@ private:
     bool m_isSyncing;
 };
 
+// 备忘录同步类
+class MemoSync : public QObject {
+    Q_OBJECT
+public:
+    static MemoSync* instance();
+
+    // 同步方法
+    void syncMemos();
+    void uploadMemos(const QJsonArray& memos);
+    void uploadIncrementalMemos(const QJsonArray& memos, const QString& lastSyncTime);
+    void downloadMemos();
+
+signals:
+    void memosSynced(const QJsonArray& memos);
+    void memosUploadComplete();
+    void memosDownloadComplete(const QJsonArray& memos);
+    void syncFailed(const QString& error);
+
+private slots:
+    void onMemosLoaded(const QString& endpoint, const QJsonDocument& response);
+    void onMemosSaved(const QString& endpoint, const QJsonDocument& response);
+    void onRequestFailed(const QString& endpoint, int errorCode, const QString& error);
+
+private:
+    MemoSync();
+    bool m_isSyncing;
+};
+
 #endif // USERAPI_H

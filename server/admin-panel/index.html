@@ -638,6 +638,9 @@
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="user-tasks-tab" data-bs-toggle="tab" data-bs-target="#user-tasks" type="button" role="tab">工作日志</button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="user-memos-tab" data-bs-toggle="tab" data-bs-target="#user-memos" type="button" role="tab">备忘录</button>
+                            </li>
                         </ul>
                         <div class="tab-content mt-2" id="userLogTabsContent">
                             <div class="tab-pane fade show active" id="all-logs" role="tabpanel">
@@ -662,7 +665,55 @@
                                 <div id="userTasksTable"></div>
                                 <div id="userTasksPagination" class="mt-2"></div>
                             </div>
+                            <div class="tab-pane fade" id="user-memos" role="tabpanel">
+                                <div class="mb-2">
+                                    <button class="btn btn-sm btn-primary" onclick="loadUserMemos()">刷新</button>
+                                </div>
+                                <div id="userMemosTable"></div>
+                                <div id="userMemosPagination" class="mt-2"></div>
+                            </div>
                         </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 备忘录详情弹窗 -->
+    <div class="modal fade" id="memoDetailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">备忘录详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">名称</label>
+                        <div id="detailMemoName" class="text-primary"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">类型</label>
+                        <div id="detailMemoType"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">内容</label>
+                        <pre id="detailMemoContent" class="bg-light p-3 rounded" style="white-space: pre-wrap; word-break: break-all;"></pre>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">描述</label>
+                        <div id="detailMemoDescription"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">创建时间</label>
+                        <div id="detailMemoCreated"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">更新时间</label>
+                        <div id="detailMemoUpdated"></div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1186,6 +1237,7 @@
         document.getElementById('operation-logs-tab')?.addEventListener('shown.bs.tab', () => loadUserLogs('operation', 1));
         document.getElementById('cloud-configs-tab')?.addEventListener('shown.bs.tab', () => loadUserCloudConfigs());
         document.getElementById('user-tasks-tab')?.addEventListener('shown.bs.tab', () => loadUserTasks(1));
+        document.getElementById('user-memos-tab')?.addEventListener('shown.bs.tab', () => loadUserMemos());
 
         // 加载用户的云端配置列表（多配置）
         async function loadUserCloudConfigs() {
@@ -1458,6 +1510,168 @@
                 2: '<span class="badge bg-danger">高</span>'
             };
             return priorityMap[priority] || '<span class="badge bg-secondary">未知</span>';
+        }
+
+        // 加载用户备忘录
+        async function loadUserMemos() {
+            try {
+                const res = await fetch(`/api/admin/users/${currentDetailUserId}/memos`, {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    const memos = data.memos || [];
+                    let html = '';
+
+                    if (memos.length === 0) {
+                        html = '<div class="text-center text-muted py-3">暂无备忘录</div>';
+                    } else {
+                        html = `
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" onchange="toggleAllMemos(this)"></th>
+                                        <th>名称</th>
+                                        <th>类型</th>
+                                        <th>内容</th>
+                                        <th>描述</th>
+                                        <th>更新时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${memos.map(memo => `
+                                        <tr>
+                                            <td><input type="checkbox" class="memo-checkbox" value="${memo.id}"></td>
+                                            <td><strong>${escapeHtml(memo.name)}</strong></td>
+                                            <td>${getMemoTypeBadge(memo.type)}</td>
+                                            <td><code style="max-width: 200px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(memo.content)}">${escapeHtml(memo.content.substring(0, 50))}${memo.content.length > 50 ? '...' : ''}</code></td>
+                                            <td>${escapeHtml(memo.description || '-')}</td>
+                                            <td><small>${formatDate(memo.updatedAt)}</small></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary" onclick="viewMemoDetail('${memo.id}')">查看</button>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteMemo('${memo.id}')">删除</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                            <div class="mb-2">
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteAllMemos()">清空所有备忘录</button>
+                            </div>
+                        `;
+                    }
+
+                    document.getElementById('userMemosTable').innerHTML = html;
+                } else {
+                    document.getElementById('userMemosTable').innerHTML = '<div class="text-center text-danger py-3">加载备忘录失败</div>';
+                }
+            } catch (err) {
+                document.getElementById('userMemosTable').innerHTML = '<div class="text-center text-danger py-3">加载备忘录失败</div>';
+            }
+        }
+
+        function getMemoTypeBadge(type) {
+            const typeMap = {
+                0: '<span class="badge bg-warning">脚本</span>',
+                1: '<span class="badge bg-danger">密钥</span>',
+                2: '<span class="badge bg-secondary">其他</span>'
+            };
+            return typeMap[type] || '<span class="badge bg-secondary">其他</span>';
+        }
+
+        function getMemoTypeName(type) {
+            const typeMap = { 0: '脚本', 1: '密钥', 2: '其他' };
+            return typeMap[type] || '其他';
+        }
+
+        // 全选/取消备忘录复选框
+        function toggleAllMemos(checkbox) {
+            const checkboxes = document.querySelectorAll('.memo-checkbox');
+            checkboxes.forEach(cb => cb.checked = checkbox.checked);
+        }
+
+        // 查看备忘录详情
+        async function viewMemoDetail(memoId) {
+            try {
+                const res = await fetch(`/api/admin/users/${currentDetailUserId}/memos`, {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const data = await res.json();
+
+                if (data.success && data.memos) {
+                    const memo = data.memos.find(m => m.id === memoId);
+                    if (memo) {
+                        document.getElementById('detailMemoName').textContent = memo.name;
+                        document.getElementById('detailMemoType').textContent = getMemoTypeName(memo.type);
+                        document.getElementById('detailMemoContent').textContent = memo.content;
+                        document.getElementById('detailMemoDescription').textContent = memo.description || '无';
+                        document.getElementById('detailMemoCreated').textContent = formatDate(memo.createdAt);
+                        document.getElementById('detailMemoUpdated').textContent = formatDate(memo.updatedAt);
+
+                        new bootstrap.Modal(document.getElementById('memoDetailModal')).show();
+                    }
+                }
+            } catch (err) {
+                showToast('加载备忘录详情失败', 'danger');
+            }
+        }
+
+        // 删除备忘录
+        async function deleteMemo(memoId) {
+            if (!confirm('确定要删除这条备忘录吗？')) return;
+
+            try {
+                const res = await fetch(`/api/admin/users/${currentDetailUserId}/memos/${memoId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast('删除成功', 'success');
+                    loadUserMemos();
+                } else {
+                    showToast('删除失败', 'danger');
+                }
+            } catch (err) {
+                showToast('删除失败', 'danger');
+            }
+        }
+
+        // 清空所有备忘录
+        async function deleteAllMemos() {
+            if (!confirm('确定要清空所有备忘录吗？此操作不可恢复！')) return;
+
+            try {
+                const res = await fetch(`/api/admin/users/${currentDetailUserId}/memos`, {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const data = await res.json();
+
+                if (data.success && data.memos && data.memos.length > 0) {
+                    let deletedCount = 0;
+
+                    for (const memo of data.memos) {
+                        const delRes = await fetch(`/api/admin/users/${currentDetailUserId}/memos/${memo.id}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': 'Bearer ' + authToken }
+                        });
+                        const delData = await delRes.json();
+                        if (delData.success) {
+                            deletedCount++;
+                        }
+                    }
+
+                    showToast(`成功删除 ${deletedCount} 条备忘录`, 'success');
+                } else {
+                    showToast('没有备忘录可删除', 'info');
+                }
+            } catch (err) {
+                showToast('删除失败', 'danger');
+            }
+            loadUserMemos();
         }
 
         // 全选/取消日志复选框

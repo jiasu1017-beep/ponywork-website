@@ -70,6 +70,18 @@ function getUserDb(userId) {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
 
+        // 备忘录同步表（跟随账号）
+        userDb.run(`CREATE TABLE IF NOT EXISTS user_memos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            memo_id TEXT NOT NULL UNIQUE,
+            name TEXT,
+            type INTEGER DEFAULT 2,
+            content TEXT,
+            description TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+
         // 同步日志表
         userDb.run(`CREATE TABLE IF NOT EXISTS sync_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

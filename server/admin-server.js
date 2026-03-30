@@ -666,6 +666,65 @@ app.delete('/api/admin/users/:id/tasks/:task_id', authenticateAdmin, (req, res) 
     });
 });
 
+// 获取指定用户的备忘录（管理后台）
+app.get('/api/admin/users/:id/memos', authenticateAdmin, (req, res) => {
+    const { id } = req.params;
+    const userId = parseInt(id);
+
+    // 检查用户是否存在
+    db.get("SELECT id, username FROM users WHERE id = ?", [id], (err, user) => {
+        if (err || !user) {
+            return res.status(404).json({ success: false, message: '用户不存在' });
+        }
+
+        const userDbConn = userDb.getUserDb(userId);
+        userDbConn.all("SELECT * FROM user_memos ORDER BY updated_at DESC", [], (err, rows) => {
+            if (err) {
+                return res.status(500).json({ success: false, message: '获取备忘录失败' });
+            }
+
+            const memos = rows.map(row => ({
+                id: row.memo_id,
+                name: row.name,
+                type: row.type,
+                typeName: ['', '脚本', '密钥', '其他'][row.type] || '其他',
+                content: row.content,
+                description: row.description,
+                createdAt: row.created_at,
+                updatedAt: row.updated_at
+            }));
+
+            res.json({ success: true, username: user.username, memos: memos });
+        });
+    });
+});
+
+// 删除指定用户的备忘录（管理后台）
+app.delete('/api/admin/users/:id/memos/:memo_id', authenticateAdmin, (req, res) => {
+    const { id, memo_id } = req.params;
+    const userId = parseInt(id);
+
+    // 检查用户是否存在
+    db.get("SELECT id, username FROM users WHERE id = ?", [id], (err, user) => {
+        if (err || !user) {
+            return res.status(404).json({ success: false, message: '用户不存在' });
+        }
+
+        const userDbConn = userDb.getUserDb(userId);
+        userDbConn.run("DELETE FROM user_memos WHERE memo_id = ?", [memo_id], function(err) {
+            if (err) {
+                return res.status(500).json({ success: false, message: '删除备忘录失败' });
+            }
+
+            // 记录操作日志
+            db.run("INSERT INTO operation_logs (user_id, action, details, ip_address) VALUES (?, ?, ?, ?)",
+                [req.adminId, 'delete_user_memo', `删除用户 ${user.username} 的备忘录: ${memo_id}`, req.ip]);
+
+            res.json({ success: true, message: '备忘录删除成功' });
+        });
+    });
+});
+
 // 批量删除用户日志（管理后台）
 app.delete('/api/admin/users/:id/logs', authenticateAdmin, (req, res) => {
     const { id } = req.params;
@@ -1518,6 +1577,142 @@ app.get('/api/config/tasks/incremental', authenticateToken, (req, res) => {
         }));
 
         res.json({ success: true, tasks: tasks });
+    });
+});
+
+// ========== 备忘录同步 API ==========
+
+// 同步备忘录（上传/更新）
+app.post('/api/memos/sync', authenticateToken, (req, res) => {
+    const { memos } = req.body;
+
+    if (!memos || !Array.isArray(memos)) {
+        return res.status(400).json({ success: false, error: '备忘录数据格式错误' });
+    }
+
+    const userDbConn = userDb.getUserDb(req.userId);
+
+    // 批量插入或更新备忘录
+    const stmt = userDbConn.prepare(`INSERT OR REPLACE INTO user_memos
+        (memo_id, name, type, content, description, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`);
+
+    let inserted = 0;
+    memos.forEach(memo => {
+        const updatedAt = memo.updatedAt || new Date().toISOString();
+        const createdAt = memo.createdAt || updatedAt;
+        stmt.run(
+            memo.id || '',
+            memo.name || '',
+            memo.type || 2,
+            memo.content || '',
+            memo.description || '',
+            createdAt,
+            updatedAt,
+            function(err) {
+                if (!err) inserted++;
+            }
+        );
+    });
+
+    stmt.finalize((err) => {
+        if (err) {
+            return res.status(500).json({ success: false, error: '同步备忘录失败: ' + err.message });
+        }
+
+        res.json({ success: true, message: '备忘录同步成功', count: inserted });
+    });
+});
+
+// 获取用户备忘录
+app.get('/api/memos/get', authenticateToken, (req, res) => {
+    const userDbConn = userDb.getUserDb(req.userId);
+
+    userDbConn.all("SELECT * FROM user_memos ORDER BY updated_at DESC", [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ success: false, error: '获取备忘录失败: ' + err.message });
+        }
+
+        const memos = rows.map(row => ({
+            id: row.memo_id,
+            name: row.name,
+            type: row.type,
+            content: row.content,
+            description: row.description,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at
+        }));
+
+        res.json({ success: true, memos: memos });
+    });
+});
+
+// 增量同步备忘录
+app.post('/api/memos/incremental', authenticateToken, (req, res) => {
+    const { memos, lastSyncTime } = req.body;
+
+    if (!memos || !Array.isArray(memos)) {
+        return res.status(400).json({ success: false, error: '备忘录数据格式错误' });
+    }
+
+    const userDbConn = userDb.getUserDb(req.userId);
+
+    // 批量插入或更新备忘录
+    const stmt = userDbConn.prepare(`INSERT OR REPLACE INTO user_memos
+        (memo_id, name, type, content, description, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`);
+
+    let inserted = 0;
+    memos.forEach(memo => {
+        const updatedAt = memo.updatedAt || new Date().toISOString();
+        const createdAt = memo.createdAt || updatedAt;
+        stmt.run(
+            memo.id || '',
+            memo.name || '',
+            memo.type || 2,
+            memo.content || '',
+            memo.description || '',
+            createdAt,
+            updatedAt,
+            function(err) {
+                if (!err) inserted++;
+            }
+        );
+    });
+
+    stmt.finalize((err) => {
+        if (err) {
+            return res.status(500).json({ success: false, error: '增量同步备忘录失败: ' + err.message });
+        }
+
+        // 获取上次同步时间之后修改的备忘录
+        let query = "SELECT * FROM user_memos";
+        let params = [];
+
+        if (lastSyncTime) {
+            query += " WHERE updated_at > ?";
+            params.push(lastSyncTime);
+        }
+
+        query += " ORDER BY updated_at DESC";
+
+        userDbConn.all(query, params, (err, rows) => {
+            if (err) {
+                return res.status(500).json({ success: false, error: '获取备忘录失败: ' + err.message });
+            }
+
+            const memosResult = rows.map(row => ({
+                id: row.memo_id,
+                name: row.name,
+                type: row.type,
+                content: row.content,
+                description: row.description,
+                createdAt: row.created_at,
+                updatedAt: row.updated_at
+            }));
+
+            res.json({ success: true, message: '增量同步成功', count: inserted, memos: memosResult });
+        });
     });
 });
 
