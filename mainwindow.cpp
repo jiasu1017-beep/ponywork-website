@@ -9,6 +9,7 @@
 #include "modules/user/userapi.h"
 #include "modules/widgets/collectionmanagerwidget.h"
 #include "modules/widgets/worklogwidget.h"
+#include "modules/widgets/memowidget.h"
 #include "modules/widgets/bottomappbar.h"
 #include "modules/update/updatedialog.h"
 #include "modules/update/updateprogressdialog.h"
@@ -196,6 +197,8 @@ void MainWindow::setupUI()
     userWidget->setMainWindow(this);
 
     workLogWidget = new WorkLogWidget(db, this);
+
+    memoWidget = new MemoWidget(db, this);
     
     connect(appManagerWidget, &AppManagerWidget::resetAppsRequested, this, &MainWindow::resetApps);
     connect(remoteDesktopWidget, &RemoteDesktopWidget::appListNeedsRefresh, appManagerWidget, &AppManagerWidget::refreshAppList);
@@ -209,6 +212,7 @@ void MainWindow::setupUI()
     tabWidget->addTab(workLogWidget, QApplication::style()->standardIcon(QStyle::SP_FileDialogDetailedView), "工作日志");
     tabWidget->addTab(remoteDesktopWidget, QApplication::style()->standardIcon(QStyle::SP_ComputerIcon), "远程桌面");
     tabWidget->addTab(shutdownWidget, QApplication::style()->standardIcon(QStyle::SP_BrowserStop), "定时关机");
+    tabWidget->addTab(memoWidget, QApplication::style()->standardIcon(QStyle::SP_FileIcon), "备忘录");
     tabWidget->addTab(settingsWidget, QApplication::style()->standardIcon(QStyle::SP_FileDialogInfoView), "设置");
  
     tabWidget->setIconSize(QSize(24, 24));

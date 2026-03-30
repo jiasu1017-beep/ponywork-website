@@ -32,6 +32,7 @@ class UpdateDialog;
 class UpdateProgressDialog;
 class RemoteDesktopWidget;
 class WorkLogWidget;
+class MemoWidget;
 class BottomAppBar;
 
 class MainWindow : public QMainWindow
@@ -113,6 +114,7 @@ private:
     UpdateProgressDialog *updateProgressDialog;
     RemoteDesktopWidget *remoteDesktopWidget;
     WorkLogWidget *workLogWidget;
+    MemoWidget *memoWidget;
     QPropertyAnimation *m_bottomAppBarAnimation;
     BottomAppBar *bottomAppBar;
     QLabel *statusLabel;

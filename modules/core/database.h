@@ -9,6 +9,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QDateTime>
+#include <QUuid>
 
 enum AppType {
     AppType_Executable,
@@ -136,6 +137,27 @@ enum TaskPriority {
     TaskPriority_Medium,
     TaskPriority_High
 };
+
+enum MemoType {
+    MemoType_Script,
+    MemoType_Key,
+    MemoType_Other
+};
+
+struct Memo {
+    QString id;
+    QString name;
+    MemoType type;
+    QString content;
+    QString description;
+    QDateTime createdAt;
+    QDateTime updatedAt;
+    int syncStatus;  // 0: pending, 1: synced
+
+    Memo() : type(MemoType_Other), syncStatus(0) {}
+};
+
+Q_DECLARE_METATYPE(Memo)
 
 enum TaskStatus {
     TaskStatus_Todo,
@@ -322,6 +344,15 @@ public:
     // 公开方法供外部调用保存和转换任务数据
     bool saveTaskData();
     QJsonObject taskToJson(const Task &task);
+
+    // 备忘录方法
+    bool addMemo(const Memo &memo);
+    bool updateMemo(const Memo &memo);
+    bool deleteMemo(const QString &id);
+    QList<Memo> getAllMemos();
+    Memo getMemoById(const QString &id);
+    QList<Memo> getMemosModifiedSince(const QDateTime &since);
+    QString generateMemoId();
 
 private:
     QString dataFilePath;

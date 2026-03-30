@@ -2037,3 +2037,126 @@ bool Database::migrateTaskData()
 
     return true;
 }
+
+// 备忘录方法实现
+QString Database::generateMemoId()
+{
+    return QUuid::createUuid().toString(QUuid::WithoutBraces);
+}
+
+bool Database::addMemo(const Memo &memo)
+{
+    QJsonArray memosArray = taskRootObject["memos"].toArray();
+
+    QJsonObject obj;
+    obj["id"] = memo.id;
+    obj["name"] = memo.name;
+    obj["type"] = static_cast<int>(memo.type);
+    obj["content"] = memo.content;
+    obj["description"] = memo.description;
+    obj["createdAt"] = memo.createdAt.toString(Qt::ISODate);
+    obj["updatedAt"] = memo.updatedAt.toString(Qt::ISODate);
+    obj["syncStatus"] = memo.syncStatus;
+
+    memosArray.append(obj);
+    taskRootObject["memos"] = memosArray;
+
+    return saveTaskData();
+}
+
+bool Database::updateMemo(const Memo &memo)
+{
+    QJsonArray memosArray = taskRootObject["memos"].toArray();
+
+    for (int i = 0; i < memosArray.size(); ++i) {
+        QJsonObject obj = memosArray[i].toObject();
+        if (obj["id"].toString() == memo.id) {
+            obj["name"] = memo.name;
+            obj["type"] = static_cast<int>(memo.type);
+            obj["content"] = memo.content;
+            obj["description"] = memo.description;
+            obj["updatedAt"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+            obj["syncStatus"] = 0;  // 标记为待同步
+            memosArray[i] = obj;
+            break;
+        }
+    }
+
+    taskRootObject["memos"] = memosArray;
+    return saveTaskData();
+}
+
+bool Database::deleteMemo(const QString &id)
+{
+    QJsonArray memosArray = taskRootObject["memos"].toArray();
+    QJsonArray newArray;
+
+    for (const QJsonValue &val : memosArray) {
+        QJsonObject obj = val.toObject();
+        if (obj["id"].toString() != id) {
+            newArray.append(obj);
+        }
+    }
+
+    taskRootObject["memos"] = newArray;
+    return saveTaskData();
+}
+
+QList<Memo> Database::getAllMemos()
+{
+    QList<Memo> memos;
+    QJsonArray memosArray = taskRootObject["memos"].toArray();
+
+    for (const QJsonValue &val : memosArray) {
+        QJsonObject obj = val.toObject();
+        Memo memo;
+        memo.id = obj["id"].toString();
+        memo.name = obj["name"].toString();
+        memo.type = static_cast<MemoType>(obj["type"].toInt(2));
+        memo.content = obj["content"].toString();
+        memo.description = obj["description"].toString();
+        memo.createdAt = QDateTime::fromString(obj["createdAt"].toString(), Qt::ISODate);
+        memo.updatedAt = QDateTime::fromString(obj["updatedAt"].toString(), Qt::ISODate);
+        memo.syncStatus = obj["syncStatus"].toInt(0);
+        memos.append(memo);
+    }
+
+    return memos;
+}
+
+Memo Database::getMemoById(const QString &id)
+{
+    QJsonArray memosArray = taskRootObject["memos"].toArray();
+
+    for (const QJsonValue &val : memosArray) {
+        QJsonObject obj = val.toObject();
+        if (obj["id"].toString() == id) {
+            Memo memo;
+            memo.id = obj["id"].toString();
+            memo.name = obj["name"].toString();
+            memo.type = static_cast<MemoType>(obj["type"].toInt(2));
+            memo.content = obj["content"].toString();
+            memo.description = obj["description"].toString();
+            memo.createdAt = QDateTime::fromString(obj["createdAt"].toString(), Qt::ISODate);
+            memo.updatedAt = QDateTime::fromString(obj["updatedAt"].toString(), Qt::ISODate);
+            memo.syncStatus = obj["syncStatus"].toInt(0);
+            return memo;
+        }
+    }
+
+    return Memo();
+}
+
+QList<Memo> Database::getMemosModifiedSince(const QDateTime &since)
+{
+    QList<Memo> result;
+    QList<Memo> allMemos = getAllMemos();
+
+    for (const Memo &memo : allMemos) {
+        if (memo.updatedAt >= since || memo.syncStatus == 0) {
+            result.append(memo);
+        }
+    }
+
+    return result;
+}

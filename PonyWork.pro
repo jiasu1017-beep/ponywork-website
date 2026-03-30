@@ -30,6 +30,7 @@ SOURCES += main.cpp \
            modules/widgets/appcollectionupdater.cpp \
            modules/widgets/cloud_login_impl.cpp \
            modules/widgets/worklogwidget.cpp \
+           modules/widgets/memowidget.cpp \
            modules/widgets/syncconflictdialog.cpp \
            modules/widgets/synclogwidget.cpp \
            modules/widgets/bottomappbar.cpp \
@@ -64,6 +65,7 @@ HEADERS  += mainwindow.h \
             modules/widgets/snapshotmanagerwidget.h \
             modules/widgets/appcollectionupdater.h \
             modules/widgets/worklogwidget.h \
+           modules/widgets/memowidget.h \
             modules/widgets/syncconflictdialog.h \
             modules/widgets/synclogwidget.h \
             modules/widgets/bottomappbar.h \
