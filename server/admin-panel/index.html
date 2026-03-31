@@ -1307,29 +1307,24 @@
             }
         }
 
-        // 加载用户的FRPC端口信息
+        // 加载用户的FRPC端口信息（优化：使用单独的API，避免获取所有用户）
         async function loadUserFrpcPort(userId) {
             try {
-                const res = await fetch('/api/admin/frpc/ports', {
+                const res = await fetch(`/api/admin/users/${userId}/frpc`, {
                     headers: { 'Authorization': 'Bearer ' + authToken }
                 });
                 const data = await res.json();
 
                 const frpcRow = document.getElementById('frpcPortRow');
-                if (data.success && data.ports && data.ports.length > 0) {
-                    // 找到当前用户的端口信息
-                    const userPort = data.ports.find(p => p.user_id === userId);
-                    if (userPort && userPort.device_name) {
-                        document.getElementById('detailDeviceName').textContent = userPort.device_name || '-';
-                        document.getElementById('detailRemotePort').textContent = userPort.remote_port || '未分配';
-                        document.getElementById('detailServerAddr').textContent = userPort.server_addr || '-';
-                        document.getElementById('detailFrpcStatus').innerHTML = userPort.is_enabled
-                            ? '<span class="badge bg-success">已启用</span>'
-                            : '<span class="badge bg-secondary">未启用</span>';
-                        frpcRow.style.display = 'flex';
-                    } else {
-                        frpcRow.style.display = 'none';
-                    }
+                if (data.success && data.frpc && data.frpc.device_name) {
+                    const userPort = data.frpc;
+                    document.getElementById('detailDeviceName').textContent = userPort.device_name || '-';
+                    document.getElementById('detailRemotePort').textContent = userPort.remote_port || '未分配';
+                    document.getElementById('detailServerAddr').textContent = userPort.server_addr || '-';
+                    document.getElementById('detailFrpcStatus').innerHTML = userPort.is_enabled
+                        ? '<span class="badge bg-success">已启用</span>'
+                        : '<span class="badge bg-secondary">未启用</span>';
+                    frpcRow.style.display = 'flex';
                 } else {
                     frpcRow.style.display = 'none';
                 }

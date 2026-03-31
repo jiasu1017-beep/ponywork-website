@@ -319,6 +319,67 @@ app.get('/api/admin/frpc/ports', authenticateAdmin, (req, res) => {
     });
 });
 
+// 获取单个用户的 FRPC 端口信息（优化：避免获取所有用户）
+app.get('/api/admin/users/:id/frpc', authenticateAdmin, (req, res) => {
+    const { id } = req.params;
+    const userId = parseInt(id);
+
+    // 检查用户是否存在
+    db.get("SELECT id, username, email FROM users WHERE id = ?", [id], (err, user) => {
+        if (err || !user) {
+            return res.status(404).json({ success: false, message: '用户不存在' });
+        }
+
+        try {
+            const userDbConn = userDb.getUserDb(userId);
+            userDbConn.get("SELECT value, updated_at FROM user_configs WHERE key = 'frpc'", [], (err, row) => {
+                let frpcConfig = {};
+                let updatedAt = null;
+
+                if (row) {
+                    try {
+                        if (row.value) {
+                            frpcConfig = JSON.parse(row.value);
+                        }
+                        updatedAt = row.updated_at;
+                    } catch (e) {
+                        console.error('Parse FRPC config error:', e);
+                    }
+                }
+
+                res.json({
+                    success: true,
+                    frpc: {
+                        user_id: user.id,
+                        username: user.username,
+                        email: user.email,
+                        remote_port: frpcConfig.remotePort || null,
+                        device_name: frpcConfig.deviceName || null,
+                        server_addr: frpcConfig.serverAddr || '8.163.37.74',
+                        is_enabled: frpcConfig.isEnabled || false,
+                        last_updated: updatedAt
+                    }
+                });
+            });
+        } catch (e) {
+            console.error('Error getting user db for user', userId, e);
+            res.json({
+                success: true,
+                frpc: {
+                    user_id: user.id,
+                    username: user.username,
+                    email: user.email,
+                    remote_port: null,
+                    device_name: null,
+                    server_addr: '8.163.37.74',
+                    is_enabled: false,
+                    last_updated: null
+                }
+            });
+        }
+    });
+});
+
 app.get('/api/admin/users/:id', authenticateAdmin, (req, res) => {
     const { id } = req.params;
 
@@ -610,18 +671,26 @@ app.get('/api/admin/users/:id/tasks', authenticateAdmin, (req, res) => {
                     }
 
                     // 转换为前端需要的格式
-                    const parsedTasks = tasks.map(task => ({
-                        id: task.task_id,
-                        title: task.title,
-                        description: task.description,
-                        categoryId: task.category_id,
-                        priority: task.priority,
-                        status: task.status,
-                        workDuration: task.work_duration,
-                        completionTime: task.completion_time,
-                        tags: JSON.parse(task.tags || '[]'),
-                        updatedAt: task.updated_at
-                    }));
+                    const parsedTasks = tasks.map(task => {
+                        let tags = [];
+                        try {
+                            tags = JSON.parse(task.tags || '[]');
+                        } catch (e) {
+                            console.error(`解析任务 ${task.task_id} 的 tags 失败:`, e);
+                        }
+                        return {
+                            id: task.task_id,
+                            title: task.title,
+                            description: task.description,
+                            categoryId: task.category_id,
+                            priority: task.priority,
+                            status: task.status,
+                            workDuration: task.work_duration,
+                            completionTime: task.completion_time,
+                            tags: tags,
+                            updatedAt: task.updated_at
+                        };
+                    });
 
                     res.json({
                         success: true,
@@ -1478,18 +1547,26 @@ app.get('/api/config/tasks/get', authenticateToken, (req, res) => {
         }
 
         // 转换为前端需要的格式
-        const tasks = rows.map(row => ({
-            id: row.task_id,
-            title: row.title,
-            description: row.description,
-            categoryId: row.category_id,
-            priority: row.priority,
-            status: row.status,
-            workDuration: row.work_duration,
-            completionTime: row.completion_time,
-            tags: JSON.parse(row.tags || '[]'),
-            updatedAt: row.updated_at
-        }));
+        const tasks = rows.map(row => {
+            let tags = [];
+            try {
+                tags = JSON.parse(row.tags || '[]');
+            } catch (e) {
+                console.error(`解析任务 ${row.task_id} 的 tags 失败:`, e);
+            }
+            return {
+                id: row.task_id,
+                title: row.title,
+                description: row.description,
+                categoryId: row.category_id,
+                priority: row.priority,
+                status: row.status,
+                workDuration: row.work_duration,
+                completionTime: row.completion_time,
+                tags: tags,
+                updatedAt: row.updated_at
+            };
+        });
 
         res.json({ success: true, tasks: tasks });
     });
@@ -1563,18 +1640,26 @@ app.get('/api/config/tasks/incremental', authenticateToken, (req, res) => {
             return res.status(500).json({ success: false, error: '获取工作日志失败: ' + err.message });
         }
 
-        const tasks = rows.map(row => ({
-            id: row.task_id,
-            title: row.title,
-            description: row.description,
-            categoryId: row.category_id,
-            priority: row.priority,
-            status: row.status,
-            workDuration: row.work_duration,
-            completionTime: row.completion_time,
-            tags: JSON.parse(row.tags || '[]'),
-            updatedAt: row.updated_at
-        }));
+        const tasks = rows.map(row => {
+            let tags = [];
+            try {
+                tags = JSON.parse(row.tags || '[]');
+            } catch (e) {
+                console.error(`解析任务 ${row.task_id} 的 tags 失败:`, e);
+            }
+            return {
+                id: row.task_id,
+                title: row.title,
+                description: row.description,
+                categoryId: row.category_id,
+                priority: row.priority,
+                status: row.status,
+                workDuration: row.work_duration,
+                completionTime: row.completion_time,
+                tags: tags,
+                updatedAt: row.updated_at
+            };
+        });
 
         res.json({ success: true, tasks: tasks });
     });
@@ -2112,56 +2197,52 @@ app.post('/api/auth/reset-password', (req, res) => {
                 return res.status(400).json({ success: false, error: '无效或已过期的重置链接' });
             }
             
-            const bcrypt = require('bcryptjs');
-            
             // 检查密码格式
             if (new_password.length < 6) {
                 return res.status(400).json({ success: false, error: '密码长度至少 6 位' });
             }
             
             // 检查是否为 SHA-256 格式（客户端已哈希）
+            const crypto = require('crypto');
             const isSHA256 = /^[a-f0-9]{64}$/i.test(new_password);
-            let passwordToHash = new_password;
+            let hashedPassword;
             
-            if (!isSHA256) {
-                // 如果不是 SHA-256，先进行 SHA-256 哈希
-                const crypto = require('crypto');
-                passwordToHash = crypto.createHash('sha256').update(new_password).digest('hex');
+            if (isSHA256) {
+                // 客户端已经发送了 SHA-256 哈希值，直接使用
+                hashedPassword = new_password;
+            } else {
+                // 客户端发送的是明文，进行 SHA-256 哈希
+                hashedPassword = crypto.createHash('sha256').update(new_password).digest('hex');
             }
             
-            // bcrypt 加密
-            bcrypt.hash(passwordToHash, 10, (err, hash) => {
+            console.log('[密码重置] 新密码格式: SHA-256');
+            
+            // 更新密码（统一使用 SHA-256 格式）
+            db.run("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, resetToken.user_id], function(err) {
                 if (err) {
-                    return res.status(500).json({ success: false, error: '密码加密失败' });
+                    return res.status(500).json({ success: false, error: '更新密码失败' });
                 }
                 
-                // 更新密码
-                db.run("UPDATE users SET password = ? WHERE id = ?", [hash, resetToken.user_id], function(err) {
+                // 标记 token 为已使用
+                db.run("UPDATE password_reset_tokens SET used = 1 WHERE token = ?", [token], function(err) {
                     if (err) {
-                        return res.status(500).json({ success: false, error: '更新密码失败' });
+                        console.error('[密码重置] 标记 token 失败:', err);
                     }
                     
-                    // 标记 token 为已使用
-                    db.run("UPDATE password_reset_tokens SET used = 1 WHERE token = ?", [token], function(err) {
+                    // 删除该用户的所有其他 session
+                    db.run("DELETE FROM user_sessions WHERE user_id = ?", [resetToken.user_id], function(err) {
                         if (err) {
-                            console.error('[密码重置] 标记 token 失败:', err);
+                            console.error('[密码重置] 清除 session 失败:', err);
                         }
                         
-                        // 删除该用户的所有其他 session
-                        db.run("DELETE FROM user_sessions WHERE user_id = ?", [resetToken.user_id], function(err) {
-                            if (err) {
-                                console.error('[密码重置] 清除 session 失败:', err);
-                            }
-                            
-                            console.log('[密码重置] 用户 ID', resetToken.user_id, '密码已重置');
-                            
-                            // 记录操作日志
-                            db.run(`INSERT INTO operation_logs (user_id, action, details, ip_address) 
-                                    VALUES (?, 'password_reset', '用户自助重置密码', '')`, 
-                                [resetToken.user_id]);
-                            
-                            res.json({ success: true, message: '密码重置成功，请使用新密码登录' });
-                        });
+                        console.log('[密码重置] 用户 ID', resetToken.user_id, '密码已重置');
+                        
+                        // 记录操作日志
+                        db.run(`INSERT INTO operation_logs (user_id, action, details, ip_address) 
+                                VALUES (?, 'password_reset', '用户自助重置密码', '')`, 
+                            [resetToken.user_id]);
+                        
+                        res.json({ success: true, message: '密码重置成功，请使用新密码登录' });
                     });
                 });
             });
