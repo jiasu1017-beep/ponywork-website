@@ -563,4 +563,6 @@ bool FRPCManager::checkExistingProcess()
             }
         }
     }
+
+    return false;
 }

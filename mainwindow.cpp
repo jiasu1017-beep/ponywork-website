@@ -36,6 +36,9 @@
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
+    , updateDialog(nullptr)
+    , updateProgressDialog(nullptr)
+    , m_bottomAppBarAnimation(nullptr)
 {
     db = new Database(this);
     if (!db->init()) {

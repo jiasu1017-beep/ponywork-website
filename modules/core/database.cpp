@@ -16,6 +16,7 @@ Database::Database(QObject *parent) : QObject(parent)
     nextAppId = 1;
     nextCollectionId = 1;
     nextRemoteDesktopId = 1;
+    nextSnapshotId = 1;
     currentUserId = 0;
 }
 

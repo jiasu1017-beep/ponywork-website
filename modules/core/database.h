@@ -73,6 +73,9 @@ struct SnapshotInfo {
     QString tags;
     bool isFavorite;
     int sortOrder;
+
+    SnapshotInfo() : id(0), type(SnapshotType_Folder), fileCount(0),
+                     totalSize(0), isFavorite(false), sortOrder(0) {}
 };
 
 struct AppCollection {
@@ -82,6 +85,8 @@ struct AppCollection {
     QList<int> appIds;
     QString tag;
     int sortPriority;
+
+    AppCollection() : id(0), sortPriority(0) {}
 };
 
 struct RemoteDesktopConnection {
@@ -107,6 +112,11 @@ struct RemoteDesktopConnection {
     bool isFavorite;
     QDateTime createdTime;
     QDateTime lastUsedTime;
+
+    RemoteDesktopConnection() : id(0), port(3389), screenWidth(1920), screenHeight(1080),
+                                 fullScreen(true), useAllMonitors(false), enableAudio(true),
+                                 enableClipboard(true), enablePrinter(false), enableDrive(false),
+                                 sortOrder(0), isFavorite(false) {}
 };
 
 struct FRPCConfig {
@@ -202,6 +212,8 @@ struct SyncState {
     qint64 lastSyncVersion;  // 上次同步的版本
     QDateTime lastSyncTime; // 上次同步时间
     SyncStatus status;      // 同步状态
+
+    SyncState() : localVersion(0), lastSyncVersion(0), status(SyncStatus_Pending) {}
 };
 
 struct SyncLog {
@@ -213,6 +225,8 @@ struct SyncLog {
     QString afterData;       // JSON
     QString resolution;      // "local_wins", "cloud_wins", "manual"
     QDateTime timestamp;
+
+    SyncLog() : id(0) {}
 };
 
 struct Category {
@@ -222,6 +236,8 @@ struct Category {
     int parentId;
     QString color;
     int sortOrder;
+
+    Category() : id(0), parentId(0), sortOrder(0) {}
 };
 
 class Database : public QObject
