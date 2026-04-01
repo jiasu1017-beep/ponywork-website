@@ -435,7 +435,8 @@ void MainWindow::onTabChanged(int index)
     
     if (tabWidget->widget(index) == collectionManagerWidget ||
         tabWidget->widget(index) == workLogWidget ||
-        tabWidget->widget(index) == remoteDesktopWidget) {
+        tabWidget->widget(index) == remoteDesktopWidget ||
+        tabWidget->widget(index) == memoWidget) {
         shouldShowBottomAppBar = true;
     }
     
