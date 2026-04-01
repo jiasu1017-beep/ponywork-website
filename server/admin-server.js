@@ -27,11 +27,26 @@ db.serialize(() => {
         username TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
+        avatar TEXT,
         role TEXT DEFAULT 'user',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         last_login DATETIME,
         status TEXT DEFAULT 'active'
     )`);
+    
+    // 迁移：为现有表添加avatar字段（如果不存在）
+    db.all("PRAGMA table_info(users)", [], (err, columns) => {
+        if (!err && columns) {
+            const hasAvatar = columns.some(col => col.name === 'avatar');
+            if (!hasAvatar) {
+                db.run("ALTER TABLE users ADD COLUMN avatar TEXT", (err) => {
+                    if (!err) {
+                        console.log('[数据库迁移] 已添加 avatar 字段到 users 表');
+                    }
+                });
+            }
+        }
+    });
 
     db.run(`CREATE TABLE IF NOT EXISTS user_sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1801,6 +1816,27 @@ app.post('/api/memos/incremental', authenticateToken, (req, res) => {
     });
 });
 
+// 删除备忘录（用户端）
+app.post('/api/memos/delete', authenticateToken, (req, res) => {
+    const { memoIds } = req.body;
+
+    if (!memoIds || !Array.isArray(memoIds) || memoIds.length === 0) {
+        return res.status(400).json({ success: false, error: '备忘录ID列表格式错误' });
+    }
+
+    const userDbConn = userDb.getUserDb(req.userId);
+
+    // 批量删除备忘录
+    const placeholders = memoIds.map(() => '?').join(',');
+    userDbConn.run(`DELETE FROM user_memos WHERE memo_id IN (${placeholders})`, memoIds, function(err) {
+        if (err) {
+            return res.status(500).json({ success: false, error: '删除备忘录失败: ' + err.message });
+        }
+
+        res.json({ success: true, message: '备忘录删除成功', deletedCount: this.changes });
+    });
+});
+
 // 删除用户配置项
 app.delete('/api/config/:key', authenticateToken, (req, res) => {
     const { key } = req.params;
@@ -2270,6 +2306,7 @@ app.get('/api/auth/profile', (req, res) => {
                 id: user.id,
                 email: user.email,
                 username: user.username,
+                avatar: user.avatar,
                 vip_level: 0,
                 created_at: user.created_at,
                 last_login: user.last_login
@@ -2388,6 +2425,71 @@ app.post('/api/auth/change-password', authenticateToken, (req, res) => {
                 [userId, 'change_password', '用户修改密码', req.ip]);
             
             res.json({ success: true, message: '密码修改成功，请重新登录' });
+        });
+    });
+});
+
+// 更新用户资料
+app.post('/api/user/update-profile', authenticateToken, (req, res) => {
+    const { username, avatar } = req.body;
+    const userId = req.userId;
+    
+    console.log(`\n[更新资料] 用户 ID: ${userId}`);
+    
+    // 构建更新语句
+    let updates = [];
+    let params = [];
+    
+    if (username) {
+        // 检查用户名是否已被其他用户使用
+        db.get("SELECT id FROM users WHERE username = ? AND id != ?", [username, userId], (err, existingUser) => {
+            if (err) {
+                return res.status(500).json({ success: false, error: '检查用户名失败' });
+            }
+            if (existingUser) {
+                return res.status(400).json({ success: false, error: '用户名已被使用' });
+            }
+        });
+        updates.push("username = ?");
+        params.push(username);
+    }
+    
+    if (avatar !== undefined) {
+        updates.push("avatar = ?");
+        params.push(avatar);
+    }
+    
+    if (updates.length === 0) {
+        return res.status(400).json({ success: false, error: '没有要更新的内容' });
+    }
+    
+    params.push(userId);
+    
+    db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params, function(err) {
+        if (err) {
+            console.log(`  - 失败：${err.message}`);
+            return res.status(500).json({ success: false, error: '更新资料失败' });
+        }
+        
+        // 返回更新后的用户信息
+        db.get("SELECT id, email, username, avatar, created_at, last_login FROM users WHERE id = ?", [userId], (err, user) => {
+            if (err || !user) {
+                return res.status(500).json({ success: false, error: '获取用户信息失败' });
+            }
+            
+            res.json({
+                success: true,
+                message: '资料更新成功',
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    username: user.username,
+                    avatar: user.avatar,
+                    vip_level: 0,
+                    created_at: user.created_at,
+                    last_login: user.last_login
+                }
+            });
         });
     });
 });

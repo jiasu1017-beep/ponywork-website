@@ -191,16 +191,19 @@ public:
     void uploadMemos(const QJsonArray& memos);
     void uploadIncrementalMemos(const QJsonArray& memos, const QString& lastSyncTime);
     void downloadMemos();
+    void deleteMemos(const QStringList& memoIds);
 
 signals:
     void memosSynced(const QJsonArray& memos);
     void memosUploadComplete();
     void memosDownloadComplete(const QJsonArray& memos);
+    void memosDeleteComplete();
     void syncFailed(const QString& error);
 
 private slots:
     void onMemosLoaded(const QString& endpoint, const QJsonDocument& response);
     void onMemosSaved(const QString& endpoint, const QJsonDocument& response);
+    void onMemosDeleted(const QString& endpoint, const QJsonDocument& response);
     void onRequestFailed(const QString& endpoint, int errorCode, const QString& error);
 
 private:

@@ -54,6 +54,9 @@ public:
     explicit MemoWidget(Database *db, QWidget *parent = nullptr);
     ~MemoWidget();
 
+    // 供外部调用的同步方法
+    void syncMemosToCloud();
+
 private slots:
     void onAddMemo();
     void onEditMemo();
@@ -64,6 +67,8 @@ private slots:
     void onRefreshMemos();
     void onSyncMemos();
     void onSyncComplete();
+    void onMemosDownloaded(const QJsonArray &memos);
+    void onMemosDeleteComplete();
     void onSyncFailed(const QString &error);
     void onContextMenu(const QPoint &pos);
     void onContentContextMenu(const QPoint &pos);

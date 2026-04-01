@@ -77,9 +77,11 @@ MainWindow::MainWindow(QWidget *parent)
     // 登录成功时切换用户任务数据（任务同步由UserMenuWidget统一处理）
     connect(UserManager::instance(), &UserManager::loginSuccess, this, [this](const UserInfo& user) {
         db->setCurrentUser(user.id);
-        // 登录成功后自动同步备忘录
+        // 登录成功后自动同步备忘录到云端
         if (memoWidget) {
-            QTimer::singleShot(500, memoWidget, SLOT(onSyncMemos()));
+            QTimer::singleShot(500, this, [this]() {
+                memoWidget->syncMemosToCloud();
+            });
         }
     });
     // 任务同步完成后刷新UI

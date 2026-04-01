@@ -1553,6 +1553,7 @@
                                 </tbody>
                             </table>
                             <div class="mb-2">
+                                <button class="btn btn-sm btn-danger" onclick="deleteSelectedMemos()">删除选中</button>
                                 <button class="btn btn-sm btn-outline-danger" onclick="deleteAllMemos()">清空所有备忘录</button>
                             </div>
                         `;
@@ -1585,6 +1586,40 @@
         function toggleAllMemos(checkbox) {
             const checkboxes = document.querySelectorAll('.memo-checkbox');
             checkboxes.forEach(cb => cb.checked = checkbox.checked);
+        }
+
+        // 删除选中的备忘录
+        async function deleteSelectedMemos() {
+            const checkboxes = document.querySelectorAll('.memo-checkbox:checked');
+            if (checkboxes.length === 0) {
+                alert('请选择要删除的备忘录');
+                return;
+            }
+
+            if (!confirm(`确定要删除选中的 ${checkboxes.length} 条备忘录吗？`)) {
+                return;
+            }
+
+            const memoIds = Array.from(checkboxes).map(cb => cb.value);
+            let deletedCount = 0;
+
+            for (const memoId of memoIds) {
+                try {
+                    const res = await fetch(`/api/admin/users/${currentDetailUserId}/memos/${memoId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': 'Bearer ' + authToken }
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        deletedCount++;
+                    }
+                } catch (err) {
+                    console.error('删除备忘录失败:', memoId, err);
+                }
+            }
+
+            showToast(`成功删除 ${deletedCount} 条备忘录`, 'success');
+            loadUserMemos();
         }
 
         // 查看备忘录详情

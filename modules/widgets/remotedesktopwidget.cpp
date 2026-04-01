@@ -1369,7 +1369,34 @@ void RemoteDesktopWidget::checkHostStatus(int row, const QString &hostAddress, i
         // 如果不是有效IP地址，尝试DNS解析
         QHostInfo::lookupHost(hostAddress, this, [this, row, port](const QHostInfo &info) {
             if (info.error() == QHostInfo::NoError && !info.addresses().isEmpty()) {
-                checkHostByAddress(row, info.addresses().first(), port);
+                // 优先使用IPv4地址，其次使用IPv6全局单播地址
+                QHostAddress bestAddr;
+                for (const QHostAddress &addr : info.addresses()) {
+                    if (addr.protocol() == QAbstractSocket::IPv4Protocol) {
+                        bestAddr = addr;
+                        break;
+                    } else if (addr.protocol() == QAbstractSocket::IPv6Protocol) {
+                        // 跳过link-local地址 fe80::
+                        if (!addr.toString().startsWith("fe80::")) {
+                            bestAddr = addr;
+                            break;
+                        }
+                    }
+                }
+                // 如果没有找到合适的，使用第一个非link-local的
+                if (bestAddr.isNull()) {
+                    for (const QHostAddress &addr : info.addresses()) {
+                        if (addr.protocol() == QAbstractSocket::IPv6Protocol) {
+                            bestAddr = addr;
+                            break;
+                        }
+                    }
+                }
+                if (!bestAddr.isNull()) {
+                    checkHostByAddress(row, bestAddr, port);
+                } else {
+                    onHostStatusChecked(row, false);
+                }
             } else {
                 onHostStatusChecked(row, false);
             }
@@ -1386,23 +1413,43 @@ void RemoteDesktopWidget::checkHostByAddress(int row, const QHostAddress &addres
 
     int targetPort = (port > 0) ? port : 3389;
 
-    connect(socket, &QTcpSocket::connected, this, [this, socket]() {
+    // 5秒超时定时器
+    QTimer *timeoutTimer = new QTimer(this);
+    timeoutTimer->setSingleShot(true);
+    timeoutTimer->setInterval(5000);
+
+    connect(socket, &QTcpSocket::connected, this, [this, socket, timeoutTimer]() {
         int row = socket->property("row").toInt();
         onHostStatusChecked(row, true);
+        timeoutTimer->stop();
+        timeoutTimer->deleteLater();
         socket->disconnectFromHost();
         socket->deleteLater();
     });
 
-    connect(socket, &QTcpSocket::errorOccurred, this, [this, socket](QAbstractSocket::SocketError) {
+    connect(socket, &QTcpSocket::errorOccurred, this, [this, socket, timeoutTimer](QAbstractSocket::SocketError) {
         int row = socket->property("row").toInt();
+        timeoutTimer->stop();
+        timeoutTimer->deleteLater();
         onHostStatusChecked(row, false);
         socket->deleteLater();
     });
 
-    connect(socket, &QTcpSocket::disconnected, this, [socket]() {
+    connect(timeoutTimer, &QTimer::timeout, this, [this, socket, timeoutTimer]() {
+        int row = socket->property("row").toInt();
+        socket->abort();  // 超时中断连接
+        timeoutTimer->deleteLater();
+        onHostStatusChecked(row, false);
         socket->deleteLater();
     });
 
+    connect(socket, &QTcpSocket::disconnected, this, [socket, timeoutTimer]() {
+        timeoutTimer->stop();
+        timeoutTimer->deleteLater();
+        socket->deleteLater();
+    });
+
+    timeoutTimer->start();
     socket->connectToHost(address, targetPort);
 }
 

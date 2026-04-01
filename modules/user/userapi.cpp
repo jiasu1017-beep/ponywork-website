@@ -851,7 +851,7 @@ void TaskSync::downloadIncrementalTasks(const QString& lastSyncTime) {
 }
 
 void TaskSync::onTasksLoaded(const QString& endpoint, const QJsonDocument& response) {
-    if (endpoint != "/api/config/tasks/get") return;
+    if (endpoint != "/api/config/tasks/get" && endpoint != "/api/config/tasks/incremental") return;
 
     m_isSyncing = false;
 
@@ -859,6 +859,7 @@ void TaskSync::onTasksLoaded(const QString& endpoint, const QJsonDocument& respo
     if (obj["success"].toBool()) {
         QJsonArray tasks = obj["tasks"].toArray();
         emit tasksSynced(tasks);
+        emit tasksDownloadComplete(tasks);
         qDebug() << "Tasks loaded successfully, count:" << tasks.size();
     } else {
         QString error = obj["error"].toString();
@@ -868,7 +869,7 @@ void TaskSync::onTasksLoaded(const QString& endpoint, const QJsonDocument& respo
 }
 
 void TaskSync::onTasksSaved(const QString& endpoint, const QJsonDocument& response) {
-    if (endpoint != "/api/config/tasks/sync") return;
+    if (endpoint != "/api/config/tasks/sync" && endpoint != "/api/config/tasks/incremental") return;
 
     m_isSyncing = false;
 
@@ -884,7 +885,9 @@ void TaskSync::onTasksSaved(const QString& endpoint, const QJsonDocument& respon
 }
 
 void TaskSync::onRequestFailed(const QString& endpoint, int errorCode, const QString& error) {
-    if (endpoint == "/api/config/tasks/get" || endpoint == "/api/config/tasks/sync") {
+    if (endpoint == "/api/config/tasks/get" || 
+        endpoint == "/api/config/tasks/sync" ||
+        endpoint == "/api/config/tasks/incremental") {
         m_isSyncing = false;
         emit syncFailed(error);
         qDebug() << "Tasks sync failed:" << error;
@@ -897,6 +900,7 @@ MemoSync::MemoSync() : m_isSyncing(false) {
     ApiClient *client = ApiClient::instance();
     connect(client, &ApiClient::requestSuccess, this, &MemoSync::onMemosLoaded);
     connect(client, &ApiClient::requestSuccess, this, &MemoSync::onMemosSaved);
+    connect(client, &ApiClient::requestSuccess, this, &MemoSync::onMemosDeleted);
     connect(client, &ApiClient::requestFailed, this, &MemoSync::onRequestFailed);
 }
 
@@ -961,8 +965,28 @@ void MemoSync::downloadMemos() {
     ApiClient::instance()->get("/api/memos/get");
 }
 
+void MemoSync::deleteMemos(const QStringList& memoIds) {
+    if (!UserManager::instance()->isLoggedIn()) {
+        emit syncFailed("Not logged in");
+        return;
+    }
+
+    if (m_isSyncing) return;
+    m_isSyncing = true;
+
+    QJsonArray idsArray;
+    for (const QString &id : memoIds) {
+        idsArray.append(id);
+    }
+
+    QJsonObject data;
+    data["memoIds"] = idsArray;
+
+    ApiClient::instance()->post("/api/memos/delete", data);
+}
+
 void MemoSync::onMemosLoaded(const QString& endpoint, const QJsonDocument& response) {
-    if (endpoint != "/api/memos/get") return;
+    if (endpoint != "/api/memos/get" && endpoint != "/api/memos/incremental") return;
 
     m_isSyncing = false;
 
@@ -970,6 +994,7 @@ void MemoSync::onMemosLoaded(const QString& endpoint, const QJsonDocument& respo
     if (obj["success"].toBool()) {
         QJsonArray memos = obj["memos"].toArray();
         emit memosSynced(memos);
+        emit memosDownloadComplete(memos);
         qDebug() << "Memos loaded successfully, count:" << memos.size();
     } else {
         QString error = obj["error"].toString();
@@ -994,8 +1019,27 @@ void MemoSync::onMemosSaved(const QString& endpoint, const QJsonDocument& respon
     }
 }
 
+void MemoSync::onMemosDeleted(const QString& endpoint, const QJsonDocument& response) {
+    if (endpoint != "/api/memos/delete") return;
+
+    m_isSyncing = false;
+
+    QJsonObject obj = response.object();
+    if (obj["success"].toBool()) {
+        emit memosDeleteComplete();
+        qDebug() << "Memos deleted successfully";
+    } else {
+        QString error = obj["error"].toString();
+        emit syncFailed(error);
+        qDebug() << "Memos delete failed:" << error;
+    }
+}
+
 void MemoSync::onRequestFailed(const QString& endpoint, int errorCode, const QString& error) {
-    if (endpoint == "/api/memos/get" || endpoint == "/api/memos/sync" || endpoint == "/api/memos/incremental") {
+    if (endpoint == "/api/memos/get" || 
+        endpoint == "/api/memos/sync" || 
+        endpoint == "/api/memos/incremental" ||
+        endpoint == "/api/memos/delete") {
         m_isSyncing = false;
         emit syncFailed(error);
         qDebug() << "Memos sync failed:" << error;

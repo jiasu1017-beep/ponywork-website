@@ -2087,20 +2087,48 @@ bool Database::updateMemo(const Memo &memo)
     return saveTaskData();
 }
 
+bool Database::updateMemoSyncStatus(const QString &id, int status)
+{
+    QJsonArray memosArray = taskRootObject["memos"].toArray();
+
+    for (int i = 0; i < memosArray.size(); ++i) {
+        QJsonObject obj = memosArray[i].toObject();
+        if (obj["id"].toString() == id) {
+            obj["syncStatus"] = status;
+            memosArray[i] = obj;
+            break;
+        }
+    }
+
+    taskRootObject["memos"] = memosArray;
+    return saveTaskData();
+}
+
 bool Database::deleteMemo(const QString &id)
 {
     QJsonArray memosArray = taskRootObject["memos"].toArray();
     QJsonArray newArray;
+    bool found = false;
 
     for (const QJsonValue &val : memosArray) {
         QJsonObject obj = val.toObject();
-        if (obj["id"].toString() != id) {
+        if (obj["id"].toString() == id) {
+            found = true;
+        } else {
             newArray.append(obj);
         }
     }
 
-    taskRootObject["memos"] = newArray;
-    return saveTaskData();
+    if (found) {
+        taskRootObject["memos"] = newArray;
+        
+        // 记录已删除的备忘录ID，用于同步删除
+        addDeletedMemoId(id);
+        
+        return saveTaskData();
+    }
+    
+    return false;
 }
 
 QList<Memo> Database::getAllMemos()
@@ -2160,4 +2188,36 @@ QList<Memo> Database::getMemosModifiedSince(const QDateTime &since)
     }
 
     return result;
+}
+
+QStringList Database::getDeletedMemoIds()
+{
+    QStringList result;
+    QJsonArray deletedArray = taskRootObject["deletedMemoIds"].toArray();
+    for (const QJsonValue &val : deletedArray) {
+        result.append(val.toString());
+    }
+    return result;
+}
+
+void Database::addDeletedMemoId(const QString &id)
+{
+    QJsonArray deletedArray = taskRootObject["deletedMemoIds"].toArray();
+    
+    // 避免重复添加
+    for (const QJsonValue &val : deletedArray) {
+        if (val.toString() == id) {
+            return;
+        }
+    }
+    
+    deletedArray.append(id);
+    taskRootObject["deletedMemoIds"] = deletedArray;
+    saveTaskData();
+}
+
+void Database::clearDeletedMemoIds()
+{
+    taskRootObject["deletedMemoIds"] = QJsonArray();
+    saveTaskData();
 }

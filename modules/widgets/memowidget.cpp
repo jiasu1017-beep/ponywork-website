@@ -196,7 +196,8 @@ void MemoWidget::setupUI()
 
     // 同步信号连接
     connect(MemoSync::instance(), &MemoSync::memosUploadComplete, this, &MemoWidget::onSyncComplete);
-    connect(MemoSync::instance(), &MemoSync::memosDownloadComplete, this, &MemoWidget::onSyncComplete);
+    connect(MemoSync::instance(), &MemoSync::memosDownloadComplete, this, &MemoWidget::onMemosDownloaded);
+    connect(MemoSync::instance(), &MemoSync::memosDeleteComplete, this, &MemoWidget::onMemosDeleteComplete);
     connect(MemoSync::instance(), &MemoSync::syncFailed, this, &MemoWidget::onSyncFailed);
 
     // 初始状态
@@ -547,15 +548,137 @@ void MemoWidget::onSyncMemos()
     }
 }
 
+void MemoWidget::syncMemosToCloud()
+{
+    // 登录时同步备忘录
+    // 1. 先同步删除的备忘录ID到服务器
+    // 2. 然后下载云端数据
+    // 3. 最后上传本地未同步的备忘录
+    
+    QStringList deletedIds = db->getDeletedMemoIds();
+    if (!deletedIds.isEmpty()) {
+        qDebug() << "Syncing deleted memo IDs:" << deletedIds.size();
+        MemoSync::instance()->deleteMemos(deletedIds);
+    } else {
+        // 没有待删除的备忘录，直接下载云端数据
+        MemoSync::instance()->downloadMemos();
+    }
+}
+
 void MemoWidget::onSyncComplete()
 {
     qDebug() << "Memo sync completed";
+    // 更新已同步备忘录的状态，避免重复上传
+    QList<Memo> memos = db->getAllMemos();
+    for (const Memo &memo : memos) {
+        if (memo.syncStatus == 0) {
+            db->updateMemoSyncStatus(memo.id, 1);
+        }
+    }
     loadMemos();
+}
+
+void MemoWidget::onMemosDownloaded(const QJsonArray &memos)
+{
+    qDebug() << "Memos downloaded from cloud, count:" << memos.size();
+    
+    // 获取本地已有的备忘录
+    QList<Memo> localMemos = db->getAllMemos();
+    QSet<QString> localIds;
+    for (const Memo &memo : localMemos) {
+        localIds.insert(memo.id);
+    }
+    
+    // 获取本地已删除的备忘录ID列表（防止恢复已删除的备忘录）
+    QStringList deletedIds = db->getDeletedMemoIds();
+    QSet<QString> deletedIdSet(deletedIds.begin(), deletedIds.end());
+    
+    // 合并云端备忘录到本地
+    int addedCount = 0;
+    int updatedCount = 0;
+    int skippedCount = 0;
+    for (const QJsonValue &val : memos) {
+        QJsonObject obj = val.toObject();
+        QString memoId = obj["id"].toString();
+        
+        // 跳过已删除的备忘录
+        if (deletedIdSet.contains(memoId)) {
+            skippedCount++;
+            continue;
+        }
+        
+        Memo memo;
+        memo.id = memoId;
+        memo.name = obj["name"].toString();
+        memo.type = static_cast<MemoType>(obj["type"].toInt());
+        memo.content = obj["content"].toString();
+        memo.description = obj["description"].toString();
+        memo.createdAt = QDateTime::fromString(obj["createdAt"].toString(), Qt::ISODate);
+        memo.updatedAt = QDateTime::fromString(obj["updatedAt"].toString(), Qt::ISODate);
+        memo.syncStatus = 1; // 已同步
+        
+        if (!localIds.contains(memoId)) {
+            // 本地不存在，添加
+            db->addMemo(memo);
+            addedCount++;
+        } else {
+            // 本地存在，比较更新时间
+            Memo localMemo = db->getMemoById(memoId);
+            if (memo.updatedAt.isValid() && localMemo.updatedAt.isValid() &&
+                memo.updatedAt > localMemo.updatedAt) {
+                // 云端更新，覆盖本地
+                db->updateMemo(memo);
+                updatedCount++;
+            }
+        }
+    }
+    
+    qDebug() << "Memos merged: added" << addedCount << ", updated" << updatedCount << ", skipped(deleted)" << skippedCount;
+    
+    // 刷新列表
+    loadMemos();
+    
+    // 下载完成后，上传本地未同步的备忘录
+    QList<Memo> unsyncedMemos;
+    localMemos = db->getAllMemos(); // 重新获取更新后的列表
+    for (const Memo &memo : localMemos) {
+        if (memo.syncStatus == 0) {
+            unsyncedMemos.append(memo);
+        }
+    }
+    
+    if (!unsyncedMemos.isEmpty()) {
+        qDebug() << "Uploading unsynced memos:" << unsyncedMemos.size();
+        QJsonArray memosJson;
+        for (const Memo &memo : unsyncedMemos) {
+            QJsonObject obj;
+            obj["id"] = memo.id;
+            obj["name"] = memo.name;
+            obj["type"] = static_cast<int>(memo.type);
+            obj["content"] = memo.content;
+            obj["description"] = memo.description;
+            obj["createdAt"] = memo.createdAt.toString(Qt::ISODate);
+            obj["updatedAt"] = memo.updatedAt.toString(Qt::ISODate);
+            memosJson.append(obj);
+        }
+        MemoSync::instance()->uploadMemos(memosJson);
+    }
 }
 
 void MemoWidget::onSyncFailed(const QString &error)
 {
     qDebug() << "Memo sync failed:" << error;
+}
+
+void MemoWidget::onMemosDeleteComplete()
+{
+    qDebug() << "Memos delete sync completed";
+    
+    // 清除本地已删除的备忘录ID列表
+    db->clearDeletedMemoIds();
+    
+    // 删除同步完成后，下载云端数据
+    MemoSync::instance()->downloadMemos();
 }
 
 void MemoWidget::onContextMenu(const QPoint &pos)

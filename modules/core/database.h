@@ -369,6 +369,12 @@ public:
     Memo getMemoById(const QString &id);
     QList<Memo> getMemosModifiedSince(const QDateTime &since);
     QString generateMemoId();
+    bool updateMemoSyncStatus(const QString &id, int status);
+    
+    // 已删除备忘录ID管理（用于同步删除）
+    QStringList getDeletedMemoIds();
+    void addDeletedMemoId(const QString &id);
+    void clearDeletedMemoIds();
 
 private:
     QString dataFilePath;
