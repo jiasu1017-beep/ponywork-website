@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QCryptographicHash>
 #include <QHash>
+#include <QMap>
 #include <QProcess>
 #include <QFileInfo>
 
@@ -174,6 +175,34 @@ bool FRPCManager::startFRPC()
         return true;
     }
 
+    // 先尝试检测已运行的进程
+    if (checkExistingProcess()) {
+        qDebug() << "[FRPC] Found existing process, recovered state";
+        return true;
+    }
+
+    // 检查端口是否已被占用
+    QString deviceName = QHostInfo::localHostName();
+    QString combined = QString::number(m_config.userId) + "_" + deviceName;
+    int hash = qHash(combined) % 30000;
+    int expectedPort = 20000 + qAbs(hash);
+    
+    QProcess netstatProcess;
+    netstatProcess.start("netstat", QStringList() << "-ano");
+    netstatProcess.waitForFinished(3000);
+    QString netstatOutput = netstatProcess.readAllStandardOutput();
+    
+    if (netstatOutput.contains(QString(":%1").arg(expectedPort))) {
+        qDebug() << "[FRPC] Port" << expectedPort << "is already in use";
+        // 端口已被占用，再次尝试检测
+        if (checkExistingProcess()) {
+            return true;
+        }
+        // 无法恢复，提示用户
+        emit errorOccurred(QString("端口 %1 已被占用，请检查是否有其他 frpc 进程在运行").arg(expectedPort));
+        return false;
+    }
+
     if (!writeConfigFile()) {
         QString err = "无法创建FRPC配置文件";
         qDebug() << "[FRPC]" << err;
@@ -214,12 +243,8 @@ bool FRPCManager::startFRPC()
     m_frpcPid = pid;  // 保存PID以便后续停止
     qDebug() << "[FRPC] Saved m_frpcPid:" << m_frpcPid;
 
-    // 使用固定端口计算（与onProcessStarted中相同）
-    QString deviceName = QHostInfo::localHostName();
-    QString combined = QString::number(m_config.userId) + "_" + deviceName;
-    int hash = qHash(combined) % 30000;
-    int fixedPort = 20000 + qAbs(hash);
-    m_remotePort = fixedPort;
+    // 使用之前计算的端口
+    m_remotePort = expectedPort;
 
     m_isRunning = true;
     m_status = StatusConnected;
@@ -280,31 +305,64 @@ void FRPCManager::stopFRPC()
 
 void FRPCManager::onHeartbeatTimeout()
 {
-    // 使用wmic精确查找特定PID的进程
     if (m_frpcPid <= 0) {
+        qDebug() << "[FRPC] Heartbeat: m_frpcPid is 0, attempting to recover from database";
+        // 尝试从数据库恢复PID
+        if (m_db) {
+            FRPCConfig savedConfig = m_db->getFRPCConfig();
+            if (savedConfig.frpcPid > 0) {
+                m_frpcPid = savedConfig.frpcPid;
+                qDebug() << "[FRPC] Heartbeat: recovered PID from database:" << m_frpcPid;
+            }
+        }
+        if (m_frpcPid <= 0) {
+            return;
+        }
+    }
+
+    // 使用tasklist检测进程（比wmic更可靠）
+    QProcess p;
+    p.start("tasklist", QStringList() << "/FI" << QString("PID eq %1").arg(m_frpcPid) << "/NH");
+    
+    if (!p.waitForStarted(1000)) {
+        qDebug() << "[FRPC] Heartbeat: failed to start tasklist command";
+        return;
+    }
+    
+    if (!p.waitForFinished(3000)) {
+        qDebug() << "[FRPC] Heartbeat: tasklist command timeout";
+        p.kill();
         return;
     }
 
-    QProcess p;
-    p.start("wmic", QStringList() << "process" << "where" << QString("ProcessId=%1").arg(m_frpcPid) << "get" << "Name,ProcessId");
-    p.waitForFinished(2000);
-
     QString output = p.readAllStandardOutput();
-    qDebug() << "[FRPC] Heartbeat: checking PID" << m_frpcPid << ", output:" << output;
+    QString errorOutput = p.readAllStandardError();
+    
+    // 检查是否有错误
+    if (!errorOutput.isEmpty()) {
+        qDebug() << "[FRPC] Heartbeat: tasklist error:" << errorOutput;
+    }
+    
+    qDebug() << "[FRPC] Heartbeat: checking PID" << m_frpcPid << ", output:" << output.trimmed();
 
-    // 检查输出中是否包含我们的PID和frpc.exe
-    bool isRunning = output.contains(QString::number(m_frpcPid)) &&
-                     output.contains("frpc.exe", Qt::CaseInsensitive);
+    // 检查输出中是否包含frpc.exe
+    bool isRunning = output.contains("frpc.exe", Qt::CaseInsensitive);
     qDebug() << "[FRPC] Heartbeat: isRunning =" << isRunning;
 
     if (m_isRunning && !isRunning) {
-        // frpc进程意外退出
         qDebug() << "[FRPC] Heartbeat: frpc process" << m_frpcPid << "not found, marking as stopped";
         m_isRunning = false;
         m_status = StatusDisconnected;
         m_remotePort = 0;
         m_frpcPid = 0;
         m_heartbeatTimer->stop();
+        
+        // 清除数据库中的PID
+        if (m_db) {
+            m_config.frpcPid = 0;
+            m_db->saveFRPCConfig(m_config);
+        }
+        
         emit statusChanged(m_status);
         emit remotePortChanged(0);
         emit stopped();
@@ -468,63 +526,59 @@ bool FRPCManager::checkExistingProcess()
     qDebug() << "[FRPC] netstat output:" << netstatOutput;
 
     // 检查是否有端口在监听（LISTENING）
-    // 格式类似: TCP    0.0.0.0:20000   ...   LISTENING   12345
+    // netstat -ano 格式: TCP    0.0.0.0:20000   0.0.0.0:0   LISTENING   12345
+    // 注意：netstat输出不包含进程名，需要通过PID关联
     QStringList lines = netstatOutput.split("\n");
     bool foundOurPort = false;
     qint64 foundPid = 0;
 
+    // 先收集所有监听预期端口的PID
+    QMap<int, qint64> portPidMap;
     for (const QString &line : lines) {
-        if (line.contains("LISTENING") && line.contains("frpc")) {
-            // 从输出中提取端口和PID
-            // 格式: TCP    0.0.0.0:20000   0.0.0.0:0   LISTENING   12345
+        if (line.contains("LISTENING")) {
             QStringList parts = line.simplified().split(" ");
-            int portIndex = -1;
-            int pidIndex = -1;
             for (int i = 0; i < parts.size(); ++i) {
                 if (parts[i].contains(":")) {
-                    // 查找端口号
                     QString addrPart = parts[i];
                     int colonPos = addrPart.lastIndexOf(":");
                     if (colonPos >= 0) {
                         bool ok;
                         int port = addrPart.mid(colonPos + 1).toInt(&ok);
                         if (ok && port >= 20000 && port <= 50000) {
-                            portIndex = i;
+                            // 查找PID（LISTENING后面的数字）
+                            for (int j = 0; j < parts.size(); ++j) {
+                                if (parts[j] == "LISTENING" && j + 1 < parts.size()) {
+                                    qint64 pid = parts[j + 1].toLongLong(&ok);
+                                    if (ok && pid > 0) {
+                                        portPidMap[port] = pid;
+                                        qDebug() << "[FRPC] Found port" << port << "with PID" << pid;
+                                        break;
+                                    }
+                                }
+                            }
                             break;
                         }
                     }
                 }
             }
-            // PID是LISTENING后面的数字
-            for (int i = 0; i < parts.size(); ++i) {
-                if (parts[i] == "LISTENING" && i + 1 < parts.size()) {
-                    bool ok;
-                    qint64 pid = parts[i + 1].toLongLong(&ok);
-                    if (ok && pid > 0) {
-                        pidIndex = i + 1;
-                        foundPid = pid;
-                        break;
-                    }
-                }
-            }
+        }
+    }
 
-            if (portIndex >= 0) {
-                // 重新解析端口
-                QString addrPart = parts.value(portIndex);
-                int colonPos = addrPart.lastIndexOf(":");
-                if (colonPos >= 0) {
-                    bool ok;
-                    int port = addrPart.mid(colonPos + 1).toInt(&ok);
-                    if (ok && port >= 20000 && port <= 50000) {
-                        qDebug() << "[FRPC] Found frpc listening on port:" << port << "PID:" << foundPid;
-                        if (port == expectedPort) {
-                            foundOurPort = true;
-                            m_remotePort = port;
-                            m_frpcPid = foundPid;  // 保存PID以便后续停止
-                        }
-                    }
-                }
-            }
+    // 检查预期端口是否在监听
+    if (portPidMap.contains(expectedPort)) {
+        foundPid = portPidMap[expectedPort];
+        // 验证这个PID是否是frpc进程
+        QProcess verifyProcess;
+        verifyProcess.start("tasklist", QStringList() << "/FI" << QString("PID eq %1").arg(foundPid) << "/NH");
+        verifyProcess.waitForFinished(2000);
+        QString verifyOutput = verifyProcess.readAllStandardOutput();
+        qDebug() << "[FRPC] Verify PID" << foundPid << "output:" << verifyOutput;
+        
+        if (verifyOutput.contains("frpc.exe", Qt::CaseInsensitive)) {
+            foundOurPort = true;
+            m_remotePort = expectedPort;
+            m_frpcPid = foundPid;
+            qDebug() << "[FRPC] Confirmed frpc.exe on port" << expectedPort << "PID" << foundPid;
         }
     }
 

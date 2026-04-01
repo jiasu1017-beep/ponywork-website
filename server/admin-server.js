@@ -10,8 +10,9 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// 增加请求体大小限制到 50MB，支持大文件上传
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'admin.db');
 const dataDir = path.dirname(DB_PATH);
@@ -2517,6 +2518,31 @@ process.on('SIGTERM', () => {
     db.close(() => {
         console.log('数据库连接已关闭');
         process.exit(0);
+    });
+});
+
+// 全局错误处理中间件
+app.use((err, req, res, next) => {
+    if (err.type === 'entity.too.large') {
+        console.error('[错误] 请求体过大:', err.message);
+        return res.status(413).json({ 
+            success: false, 
+            error: '请求数据过大，请减少数据量后重试' 
+        });
+    }
+    
+    if (err.code === 'ECONNABORTED' || err.message?.includes('aborted')) {
+        console.error('[错误] 请求被中断:', req.url);
+        return res.status(400).json({ 
+            success: false, 
+            error: '请求被中断，请重试' 
+        });
+    }
+    
+    console.error('[服务器错误]', err);
+    res.status(500).json({ 
+        success: false, 
+        error: '服务器内部错误' 
     });
 });
 
