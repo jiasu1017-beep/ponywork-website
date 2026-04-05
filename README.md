@@ -1,11 +1,11 @@
 # 小马办公 - PonyWork
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v1.0.0-green.svg)](https://github.com/jiasu1017-beep/Test/releases)
+[![Version](https://img.shields.io/badge/version-v1.0.5-green.svg)](https://github.com/jiasu1017-beep/PonyWork/releases)
 [![Qt Version](https://img.shields.io/badge/Qt-5.15.2-orange.svg)](https://www.qt.io/)
 [![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](https://www.microsoft.com/windows)
 
-一个功能完善的桌面办公助手应用，帮助您更高效地管理和使用电脑。
+> 一个功能完善的桌面办公助手应用，帮助您更高效地管理和使用电脑。
 
 ---
 
@@ -15,8 +15,10 @@
 - [主要功能](#主要功能)
 - [技术栈](#技术栈)
 - [项目结构](#项目结构)
-- [安装与配置](#安装与配置)
-- [使用方法](#使用方法)
+- [快速开始](#快速开始)
+- [用户手册](#用户手册)
+- [安装说明](#安装说明)
+- [开发指南](#开发指南)
 - [贡献指南](#贡献指南)
 - [许可证](#许可证)
 - [联系方式](#联系方式)
@@ -25,80 +27,135 @@
 
 ## 项目概述
 
-### 项目名称
-**小马办公 (PonyWork)** - 您的桌面办公助手
-
 ### 项目简介
-小马办公是一个基于 Qt 框架开发的桌面办公助手应用，提供应用管理、集合管理、系统托盘、定时关机等实用功能，帮助用户提高办公效率。
+
+**小马办公 (PonyWork)** 是一个基于 Qt 5.15.2 框架开发的桌面办公助手应用，提供应用管理、集合管理、AI智能、远程桌面、备忘录、定时关机等实用功能，帮助用户提高办公效率。
 
 ### 目标用户
-- 需要快速启动常用应用的办公人员
-- 希望批量管理和启动应用的用户
-- 需要定时关机功能的用户
+
+- 需要快速启动和管理常用应用的办公人员
+- 需要远程桌面连接功能的用户
+- 希望借助AI提升工作效率的用户
+- 需要定时任务（关机/重启/休眠）的用户
 - 喜欢简洁高效桌面工具的用户
+
+### 核心特性
+
+- **应用管理**：批量添加、启动、管理应用程序
+- **AI智能**：集成9种主流AI模型，支持图标生成和智能对话
+- **远程桌面**：基于FRP内网穿透的远程桌面连接
+- **云同步**：数据云端同步，多设备无缝使用
+- **系统托盘**：最小化到托盘，后台静默运行
 
 ---
 
 ## 主要功能
 
 ### 📱 应用管理
-- ✅ 添加、编辑、删除应用程序
-- ✅ 支持大图标和列表两种视图模式
-- ✅ 多选和框选功能
-- ✅ 应用排序和收藏功能
-- ✅ 批量启动和批量删除
+
+| 功能 | 说明 |
+|------|------|
+| 添加应用 | 浏览选择 .exe 文件，添加应用程序 |
+| 编辑应用 | 修改应用名称、图标、路径等信息 |
+| 删除应用 | 删除不需要的应用条目 |
+| 启动应用 | 双击或点击按钮启动应用 |
+| 批量操作 | 批量启动和批量删除应用 |
+| 视图切换 | 大图标和列表两种视图模式 |
+| 多选操作 | Shift/Ctrl/框选 |
+| 排序收藏 | 按名称/时间排序，支持收藏 |
 
 ### 📂 集合管理
-- ✅ 自定义应用分组（集合）
-- ✅ 批量启动集合中的所有应用
-- ✅ 集合排序和管理
-- ✅ 自动选择第一个集合
+
+| 功能 | 说明 |
+|------|------|
+| 创建集合 | 自定义应用分组，命名集合 |
+| 编辑集合 | 修改集合名称和包含的应用 |
+| 删除集合 | 删除不需要的集合 |
+| 批量启动 | 一键启动集合中的所有应用 |
+| 集合排序 | 调整集合显示顺序 |
+
+### 🤖 AI 智能
+
+| 功能 | 说明 |
+|------|------|
+| AI 图标生成 | Flux/OpenAI/GPT/Claude/Gemini/通义千问/讯飞星火/DeepSeek |
+| 智能对话 | 内置 AI 对话测试窗口 |
+| API 管理 | 加密存储 API Key，支持自定义 API 地址 |
+| 连接测试 | 一键测试 AI 配置是否正确 |
+
+### 🖥️ 远程桌面
+
+| 功能 | 说明 |
+|------|------|
+| FRP 内网穿透 | 无需公网IP实现远程连接 |
+| 一键连接 | 自动配置 RDP 连接 |
+| 会话管理 | 管理和维护远程桌面列表 |
+| 多设备支持 | 支持多个远程桌面设备 |
+
+### 📝 备忘录
+
+| 功能 | 说明 |
+|------|------|
+| 创建/编辑/删除 | 完整的备忘录管理 |
+| 分类支持 | 普通、命令、脚本等多种类型 |
+| 云端同步 | 备忘录数据云端同步 |
+| 右键菜单 | 复制内容、执行命令等 |
+
+### ⏰ 定时任务
+
+| 功能 | 说明 |
+|------|------|
+| 定时关机 | 按设定时间自动关机 |
+| 定时重启 | 按设定时间自动重启 |
+| 定时休眠 | 按设定时间进入休眠状态 |
+| 取消定时 | 随时取消已设置的定时任务 |
 
 ### 🖥️ 系统托盘
-- ✅ 最小化到系统托盘
-- ✅ 托盘图标显示
-- ✅ 右键菜单（打开窗口/退出程序）
-- ✅ 双击恢复窗口
-- ✅ 可配置的关闭行为
 
-### ⏰ 定时关机
-- ✅ 定时关机功能
-- ✅ 定时重启功能
-- ✅ 定时休眠功能
-- ✅ 取消定时任务
+| 功能 | 说明 |
+|------|------|
+| 最小化到托盘 | 关闭按钮可设置为最小化到托盘 |
+| 托盘菜单 | 右键菜单（打开窗口/退出程序） |
+| 双击恢复 | 双击托盘图标恢复窗口显示 |
 
-### ⚙️ 设置
-- ✅ 开机自动启动
-- ✅ 关闭行为设置
-- ✅ 关闭提示配置
-- ✅ 关于对话框
+### 📥 底部快捷应用条
+
+| 功能 | 说明 |
+|------|------|
+| 快速启动 | 一键启动常用应用 |
+| 拖拽排序 | 自定义应用显示顺序 |
+| 悬停动画 | 提升交互体验 |
+| 主题适配 | 支持深色/浅色主题 |
 
 ---
 
 ## 技术栈
 
 ### 编程语言
+
 - **C++17** - 主要开发语言
 
 ### 开发框架
+
 - **Qt 5.15.2** - 跨平台应用程序框架
   - Qt Widgets - UI 组件库
   - Qt Core - 核心功能模块
   - Qt GUI - 图形界面模块
+  - Qt Network - 网络通信模块
 
 ### 编译器
+
 - **MinGW 8.1.0** - GCC for Windows
 
 ### 构建工具
+
 - **qmake** - Qt 构建系统
 - **GNU Make** - 构建自动化工具
 
 ### 数据存储
-- **JSON** - 本地数据存储格式
 
-### 核心依赖
-- Qt 5.15.2 核心库
-- MinGW 运行时库
+- **JSON** - 本地数据存储
+- **SQLite** - 云端同步数据存储
 
 ---
 
@@ -106,311 +163,141 @@
 
 ```
 PonyWork/
-├── .qtcreator/              # Qt Creator 项目配置
-├── img/                     # 图片资源目录
-│   ├── icon.ico            # 应用程序图标 (ICO)
-│   ├── icon.png            # 应用程序图标 (PNG)
-│   ├── pic.png             # 关于页面插图
-│   └── wechater.jpg        # 微信公众号图片
-├── ui/                      # Qt Designer UI 文件
-│   ├── appmanagerwidget.ui
-│   ├── mainwindow.ui
-│   ├── settingswidget.ui
-│   └── shutdownwidget.ui
-├── appmanagerwidget.cpp/h   # 应用管理模块
-├── collectionmanagerwidget.cpp/h # 集合管理模块
-├── database.cpp/h          # 数据存储模块
-├── main.cpp                # 程序入口
-├── mainwindow.cpp/h        # 主窗口模块
-├── settingswidget.cpp/h    # 设置模块
-├── shutdownwidget.cpp/h    # 定时关机模块
-├── PonyWork.pro            # qmake 项目文件
-├── PonyWork_resource.rc    # Windows 资源文件
-├── resources.qrc           # Qt 资源文件
-└── README.md               # 项目说明文档
+├── modules/
+│   ├── core/              # 核心功能（数据库、日志、AI配置、网络监控、FRPC）
+│   ├── user/              # 用户系统（登录、菜单、密码修改）
+│   ├── widgets/           # UI组件（应用管理、备忘录、工作日志、远程桌面、设置）
+│   ├── dialogs/           # 对话框（截图、批量导入、图标选择、AI生成）
+│   └── update/            # 自动更新系统
+├── ui/                    # Qt Designer UI 文件
+├── server/                # 服务器端代码
+├── website/               # 前端资源
+├── img/                   # 图片资源
+├── PonyWork.pro           # qmake 项目文件
+├── resources.qrc          # Qt 资源文件
+└── build.bat              # 编译脚本
 ```
-
-### 模块说明
-
-| 模块 | 文件名 | 功能描述 |
-|------|--------|----------|
-| 主窗口 | mainwindow.cpp/h | 应用程序主窗口，管理所有标签页 |
-| 应用管理 | appmanagerwidget.cpp/h | 应用列表的显示、添加、删除、启动 |
-| 集合管理 | collectionmanagerwidget.cpp/h | 应用集合的管理和批量启动 |
-| 数据存储 | database.cpp/h | JSON 数据的读写和管理 |
-| 定时关机 | shutdownwidget.cpp/h | 定时关机、重启、休眠功能 |
-| 设置 | settingswidget.cpp/h | 应用设置和关于对话框 |
 
 ---
 
-## 安装与配置
+## 快速开始
 
-### 环境要求
+### 运行程序
 
-#### 运行环境
-- **操作系统**：Windows 7/8/10/11 (64位)
-- **内存**：至少 100MB 可用内存
-- **磁盘空间**：至少 50MB 可用空间
+```bash
+# 解压发布包
+unzip PonyWork-v1.0.5-win64.zip
+cd PonyWork-v1.0.5-win64
 
-#### 开发环境
-- **操作系统**：Windows 10/11
-- **Qt**：5.15.2 或更高版本
-- **编译器**：MinGW 8.1.0 或 MSVC 2019
-- **构建工具**：qmake 和 mingw32-make
-
-### 依赖安装
-
-#### 1. 安装 Qt
-1. 访问 [Qt 官网](https://www.qt.io/download)
-2. 下载 Qt Online Installer
-3. 安装时选择 Qt 5.15.2 和 MinGW 8.1.0 组件
-
-#### 2. 配置环境变量
-将以下路径添加到系统 PATH 环境变量：
-```
-D:\Qt\5.15.2\mingw81_64\bin
-D:\Qt\Tools\mingw810_64\bin
+# 运行程序
+PonyWork.exe
 ```
 
-### 编译项目
+### 首次使用
 
-#### 使用 Qt Creator
-1. 打开 Qt Creator
-2. 文件 → 打开文件或项目
-3. 选择 `PonyWork.pro`
-4. 选择构建套件（MinGW 64-bit）
-5. 点击左下角的「运行」按钮（绿色三角形）
-
-#### 使用命令行
-```powershell
-# 1. 设置环境变量
-$env:PATH = "D:\Qt\Tools\mingw810_64\bin;D:\Qt\5.15.2\mingw81_64\bin;$env:PATH"
-
-# 2. 进入项目目录
-cd f:\00AI\Test
-
-# 3. 生成 Makefile
-qmake PonyWork.pro
-
-# 4. 编译 Release 版本
-mingw32-make -f Makefile.Release
-
-# 5. 编译 Debug 版本（可选）
-mingw32-make -f Makefile.Debug
-```
-
-### 配置文件说明
-
-#### 数据文件
-- **位置**：`%APPDATA%\PonyWork\data.json`
-- **格式**：JSON
-- **内容**：存储应用列表、集合、设置等数据
-
-#### 设置项
-| 设置项 | 说明 | 默认值 |
-|--------|------|--------|
-| auto_start | 开机自动启动 | false |
-| minimize_to_tray | 最小化到系统托盘 | true |
-| show_close_prompt | 显示关闭提示 | true |
-
----
-
-## 使用方法
-
-### 快速开始
-
-1. **运行程序**
-   ```
-   双击 release\PonyWork.exe
-   ```
-
-2. **添加应用**
-   - 切换到「应用管理」标签
+1. **添加应用**
+   - 点击「应用管理」标签
    - 点击「添加应用」按钮
-   - 选择要添加的应用程序
+   - 浏览并选择 .exe 文件
 
-3. **创建集合**
-   - 切换到「集合管理」标签
+2. **创建集合**
+   - 点击「集合管理」标签
    - 点击「添加集合」按钮
    - 输入集合名称并选择应用
 
-### 核心功能演示
+3. **配置 AI（可选）**
+   - 点击「设置」→「AI 设置」
+   - 选择 AI 模型并配置 API Key
 
-#### 应用管理
-1. **添加应用**
-   - 点击「添加应用」
-   - 浏览并选择 .exe 文件
-   - 填写应用信息并保存
+4. **远程桌面（可选）**
+   - 点击「远程桌面」标签
+   - 点击「一键设置」启用 FRPC
+   - 添加到列表后即可远程连接
 
-2. **启动应用**
-   - 双击应用图标启动
-   - 或选择应用后点击「启动应用」
+---
 
-3. **多选操作**
-   - Shift + 点击：连续选择
-   - Ctrl + 点击：逐个选择
-   - 鼠标拖拽：框选
+## 用户手册
 
-#### 集合管理
-1. **创建集合**
-   - 点击「添加集合」
-   - 输入集合名称
-   - 选择要包含的应用
+详细使用方法请参阅 [USER_MANUAL.md](USER_MANUAL.md)。
 
-2. **批量启动**
-   - 选择一个集合
-   - 点击「启动集合」
-   - 集合中的所有应用将依次启动
+---
 
-#### 系统托盘
-1. **最小化到托盘**
-   - 点击窗口「×」按钮
-   - 程序隐藏到系统托盘
+## 安装说明
 
-2. **恢复窗口**
-   - 双击托盘图标
-   - 或右键 → 「打开窗口」
+### 系统要求
 
-3. **完全退出**
-   - 右键托盘图标
-   - 选择「退出程序」
+| 项目 | 要求 |
+|------|------|
+| 操作系统 | Windows 7/8/10/11 (64位) |
+| 内存 | 至少 2GB 可用内存 |
+| 磁盘空间 | 至少 100MB 可用空间 |
 
-#### 定时关机
-1. **设置定时**
-   - 切换到「定时关机」标签
-   - 选择操作类型（关机/重启/休眠）
-   - 设置时间
-   - 点击「开始」
+### 安装步骤
 
-2. **取消定时**
-   - 点击「取消」按钮
+1. 下载最新发布包 (`PonyWork-v*x.x.x-win64.zip`)
+2. 解压到任意目录
+3. 运行 `PonyWork.exe`
+
+### 数据存储
+
+- **本地数据**: `%APPDATA%\PonyWork\data.json`
+- **日志文件**: `%APPDATA%\PonyWork\logs\`
+
+---
+
+## 开发指南
+
+### 开发环境
+
+- **Qt**: 5.15.2 或更高版本
+- **编译器**: MinGW 8.1.0 或 MSVC 2019
+- **构建工具**: qmake 和 mingw32-make
+
+### 编译项目
+
+```bash
+# 1. 设置环境变量
+set PATH=D:\Qt\Tools\mingw810_64\bin;D:\Qt\5.15.2\mingw81_64\bin;%PATH%
+
+# 2. 生成 Makefile
+qmake PonyWork.pro
+
+# 3. 编译 Release 版本
+mingw32-make release -j4
+```
+
+### 模块开发
+
+新增模块需要在对应目录创建：
+- `模块名.h` - 头文件
+- `模块名.cpp` - 实现文件
+- 如需 UI，创建 `modules/ui/模块名.ui`
 
 ---
 
 ## 贡献指南
 
-我们欢迎并感谢任何形式的贡献！
-
-### 分支管理策略
-
-```
-main (主分支)
-  └── 稳定的发布版本
-      └── develop (开发分支)
-          ├── feature/app-management (功能分支)
-          ├── feature/system-tray (功能分支)
-          └── bugfix/xxx (修复分支)
-```
-
-- **main**：主分支，保持稳定，只接受发布版本
-- **develop**：开发分支，新功能在此集成
-- **feature/*****：功能分支，从 develop 分出，完成后合并回 develop
-- **bugfix/*****：修复分支，从 develop 或 main 分出
-
 ### 提交规范
 
-#### 提交信息格式
 ```
-<type>(<scope>): <subject>
+<type>(<scope>): <description>
 
-<body>
-
-<footer>
-```
-
-#### Type 类型
-- **feat**：新功能
-- **fix**：修复 bug
-- **docs**：文档更新
-- **style**：代码格式调整
-- **refactor**：重构
-- **test**：测试相关
-- **chore**：构建/工具链相关
-
-#### 示例
-```
-feat(系统托盘): 添加最小化到系统托盘功能
-
-- 实现系统托盘图标显示
-- 添加右键菜单
-- 实现双击恢复窗口
-
-Closes #123
+type: feat | fix | refactor | docs | chore
 ```
 
 ### Pull Request 流程
 
-1. **Fork 项目**
-   - 点击 GitHub 页面右上角的 Fork 按钮
-
-2. **克隆仓库**
-   ```bash
-   git clone https://github.com/你的用户名/Test.git
-   cd Test
-   ```
-
-3. **创建功能分支**
-   ```bash
-   git checkout -b feature/你的功能名称
-   ```
-
-4. **提交更改**
-   ```bash
-   git add .
-   git commit -m "feat(scope): 描述你的更改"
-   ```
-
-5. **推送到远程**
-   ```bash
-   git push origin feature/你的功能名称
-   ```
-
-6. **创建 Pull Request**
-   - 回到 GitHub 项目页面
-   - 点击「Compare & pull request」
-   - 填写 PR 描述
-   - 提交 PR
-
-### 代码规范
-
-- 使用 4 空格缩进
-- 类名使用大驼峰命名（PascalCase）
-- 函数名和变量名使用小驼峰命名（camelCase）
-- 成员变量使用 m_ 前缀
-- 包含必要的注释
-- 遵循 Qt 编码风格
+1. Fork 项目
+2. 创建功能分支 (`git checkout -b feature/xxx`)
+3. 提交更改 (`git commit -m "feat(scope): description"`)
+4. 推送到远程 (`git push origin feature/xxx`)
+5. 创建 Pull Request
 
 ---
 
 ## 许可证
 
-本项目采用 **MIT 许可证**。
-
-```
-MIT License
-
-Copyright (c) 2024-2026 小马办公
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-详见 [LICENSE](LICENSE) 文件。
+本项目采用 **MIT 许可证**。详见 [LICENSE](LICENSE) 文件。
 
 ---
 
@@ -420,26 +307,12 @@ SOFTWARE.
 
 - **jiasu** - 项目主要维护者
   - GitHub: [@jiasu1017-beep](https://github.com/jiasu1017-beep)
-  - Email: 45795504+Haiezan@users.noreply.github.com
+  - Email: 45795504+Haieran@users.noreply.github.com
 
-### 社区
+### 反馈渠道
 
-- **微信公众号**：梁柱墙笔记
-  - 获取更多办公效率技巧
-  - 学习实用软件开发知识
-  - 不定期分享优质资源
-
-### 问题反馈
-
-如果您遇到问题或有建议：
-
-1. **GitHub Issues**：[提交 Issue](https://github.com/jiasu1017-beep/Test/issues)
-2. **问题描述**：请包含以下信息
-   - 操作系统版本
-   - 软件版本
-   - 问题的详细描述
-   - 复现步骤
-   - 截图（如果可能）
+- **GitHub Issues**: [提交问题](https://github.com/jiasu1017-beep/PonyWork/issues)
+- **微信公众号**: 梁柱墙笔记
 
 ---
 
