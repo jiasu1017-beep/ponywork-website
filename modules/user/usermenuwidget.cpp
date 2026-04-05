@@ -12,6 +12,10 @@
 #include <QSet>
 #include <QMap>
 #include <QTimer>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QMessageBox>
+#include <QPixmap>
 
 UserMenuWidget::UserMenuWidget(QWidget *parent)
     : QObject(parent)
@@ -44,6 +48,37 @@ UserMenuWidget::UserMenuWidget(QWidget *parent)
     m_registerAction = new QAction("注册", m_userMenu);
     m_userMenu->addAction(m_loginAction);
     m_userMenu->addAction(m_registerAction);
+
+    m_userMenu->addSeparator();
+
+    // 添加反馈子菜单
+    QMenu *feedbackMenu = m_userMenu->addMenu("反馈");
+    QAction *websiteAction = new QAction("网站反馈", feedbackMenu);
+    QAction *issueAction = new QAction("GitHub Issue", feedbackMenu);
+    QAction *emailAction = new QAction("邮件反馈", feedbackMenu);
+    QAction *wechatAction = new QAction("微信公众号", feedbackMenu);
+    feedbackMenu->addAction(websiteAction);
+    feedbackMenu->addAction(issueAction);
+    feedbackMenu->addAction(emailAction);
+    feedbackMenu->addAction(wechatAction);
+
+    connect(websiteAction, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl("https://github.com/jiasu1017-beep/PonyWork/issues"));
+    });
+    connect(issueAction, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl("https://github.com/jiasu1017-beep/PonyWork/issues/new"));
+    });
+    connect(emailAction, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl("mailto:wintersjia@163.com?subject=PonyWork反馈"));
+    });
+    connect(wechatAction, &QAction::triggered, this, []() {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("微信公众号");
+        msgBox.setText("<div style='text-align:center'><p>微信公众号：梁柱墙笔记</p><p style='color:#888'>扫码关注，获取最新资讯</p></div>");
+        msgBox.setIconPixmap(QPixmap(":/img/wechater.jpg").scaled(200, 200, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        msgBox.addButton(QMessageBox::Ok);
+        msgBox.exec();
+    });
 
     m_userMenuBtn->setMenu(m_userMenu);
 
@@ -135,6 +170,37 @@ void UserMenuWidget::onLoginSuccess()
     QAction *changePwdAction = new QAction("修改密码", m_userMenu);
     connect(changePwdAction, &QAction::triggered, this, &UserMenuWidget::onChangePassword);
     m_userMenu->addAction(changePwdAction);
+
+    m_userMenu->addSeparator();
+
+    // 添加反馈子菜单
+    QMenu *feedbackMenu = m_userMenu->addMenu("反馈");
+    QAction *websiteAction = new QAction("网站反馈", feedbackMenu);
+    QAction *issueAction = new QAction("GitHub Issue", feedbackMenu);
+    QAction *emailAction = new QAction("邮件反馈", feedbackMenu);
+    QAction *wechatAction = new QAction("微信公众号", feedbackMenu);
+    feedbackMenu->addAction(websiteAction);
+    feedbackMenu->addAction(issueAction);
+    feedbackMenu->addAction(emailAction);
+    feedbackMenu->addAction(wechatAction);
+
+    connect(websiteAction, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl("https://github.com/jiasu1017-beep/PonyWork/issues"));
+    });
+    connect(issueAction, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl("https://github.com/jiasu1017-beep/PonyWork/issues/new"));
+    });
+    connect(emailAction, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl("mailto:wintersjia@163.com?subject=PonyWork反馈"));
+    });
+    connect(wechatAction, &QAction::triggered, this, []() {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("微信公众号");
+        msgBox.setText("<div style='text-align:center'><p>微信公众号：梁柱墙笔记</p><p style='color:#888'>扫码关注，获取最新资讯</p></div>");
+        msgBox.setIconPixmap(QPixmap(":/img/wechater.jpg").scaled(200, 200, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        msgBox.addButton(QMessageBox::Ok);
+        msgBox.exec();
+    });
 
     m_userMenu->addSeparator();
 
