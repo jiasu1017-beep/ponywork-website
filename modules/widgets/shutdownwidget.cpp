@@ -178,11 +178,45 @@ void ShutdownWidget::setupUI()
     timeEdit = new QTimeEdit(this);
     timeEdit->setTime(QTime::currentTime().addSecs(1800));
     timeEditLayout->addWidget(timeEdit);
-    
+
+    QHBoxLayout *quickTimeLayout = new QHBoxLayout();
+    quickTimeLayout->addWidget(new QLabel("快捷时间:", this));
+
+    QPushButton *time12Btn = new QPushButton("12:00", this);
+    QPushButton *time18Btn = new QPushButton("18:00", this);
+    QPushButton *time20Btn = new QPushButton("20:00", this);
+    QPushButton *time24Btn = new QPushButton("24:00", this);
+
+    quickTimeLayout->addWidget(time12Btn);
+    quickTimeLayout->addWidget(time18Btn);
+    quickTimeLayout->addWidget(time20Btn);
+    quickTimeLayout->addWidget(time24Btn);
+
+    connect(time12Btn, &QPushButton::clicked, [this]() {
+        timeRadio->setChecked(true);
+        timeEdit->setTime(QTime(12, 0));
+    });
+
+    connect(time18Btn, &QPushButton::clicked, [this]() {
+        timeRadio->setChecked(true);
+        timeEdit->setTime(QTime(18, 0));
+    });
+
+    connect(time20Btn, &QPushButton::clicked, [this]() {
+        timeRadio->setChecked(true);
+        timeEdit->setTime(QTime(20, 0));
+    });
+
+    connect(time24Btn, &QPushButton::clicked, [this]() {
+        timeRadio->setChecked(true);
+        timeEdit->setTime(QTime(0, 0));
+    });
+
     timeLayout->addWidget(countdownRadio);
     timeLayout->addLayout(presetLayout);
     timeLayout->addLayout(customLayout);
     timeLayout->addWidget(timeRadio);
+    timeLayout->addLayout(quickTimeLayout);
     timeLayout->addLayout(timeEditLayout);
     timeGroup->setLayout(timeLayout);
     mainLayout->addWidget(timeGroup);
