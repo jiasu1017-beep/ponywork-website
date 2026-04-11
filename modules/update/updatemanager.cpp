@@ -27,7 +27,7 @@ UpdateManager::UpdateManager(QObject *parent)
     
     m_currentVersion = QCoreApplication::applicationVersion();
     m_repoOwner = "jiasu1017-beep";
-    m_repoName = "Test";
+    m_repoName = "ponywork-website";
     m_latestUpdate.isValid = false;
     m_retryCount = 0;
     m_maxRetries = 3;
