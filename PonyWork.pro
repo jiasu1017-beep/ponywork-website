@@ -1,4 +1,4 @@
-QT       += core gui network charts printsupport axcontainer
+QT       += core gui network charts printsupport axcontainer sql
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -17,6 +17,7 @@ SOURCES += main.cpp \
            modules/core/applicationmanager.cpp \
            modules/core/networkmonitor.cpp \
            modules/core/frpcmanager.cpp \
+           modules/core/recommendedappscache.cpp \
            modules/user/userapi.cpp \
            modules/user/userlogindialog.cpp \
            modules/user/usermenuwidget.cpp \
@@ -53,6 +54,7 @@ HEADERS  += mainwindow.h \
             modules/core/applicationmanager.h \
             modules/core/networkmonitor.h \
             modules/core/frpcmanager.h \
+            modules/core/recommendedappscache.h \
             modules/user/userapi.h \
             modules/user/userlogindialog.h \
             modules/user/usermenuwidget.h \
