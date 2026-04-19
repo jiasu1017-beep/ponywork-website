@@ -23,8 +23,12 @@ RecommendAppWidget::RecommendAppWidget(QWidget *parent)
     setupUI();
     loadApps();
 
+    // 连接信号：数据更新后刷新显示
     connect(RecommendedAppsCache::instance(), &RecommendedAppsCache::appsUpdated,
             this, &RecommendAppWidget::loadApps);
+
+    // 首次加载时从服务器刷新
+    RecommendedAppsCache::instance()->refreshFromServer();
 }
 
 RecommendAppWidget::~RecommendAppWidget()

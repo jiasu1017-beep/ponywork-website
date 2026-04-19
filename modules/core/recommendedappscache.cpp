@@ -76,11 +76,11 @@ RecommendedApp RecommendedAppsCache::getAppById(int id)
 
 void RecommendedAppsCache::refreshFromServer()
 {
-    ApiClient::instance()->get("/api/recommended-apps");
+    // 先连接信号，再发送请求
+    // 注意：使用 Qt::UniqueConnection 避免重复连接
     connect(ApiClient::instance(), &ApiClient::requestSuccess,
             this, [this](const QString& endpoint, const QJsonDocument& doc) {
         if (endpoint != "/api/recommended-apps") return;
-        Q_UNUSED(endpoint);
 
         QJsonArray arr = doc.object()["data"].toArray();
         QList<RecommendedApp> apps;
@@ -111,15 +111,19 @@ void RecommendedAppsCache::refreshFromServer()
         m_apps = apps;
         saveToDatabase(apps);
         emit appsUpdated(apps);
-    });
+    }, Qt::UniqueConnection);
 
     connect(ApiClient::instance(), &ApiClient::requestFailed,
             this, [this](const QString& endpoint, int code, const QString& err) {
         if (endpoint != "/api/recommended-apps") return;
         Q_UNUSED(endpoint);
         Q_UNUSED(code);
+        qDebug() << "RecommendedAppsCache: Request failed:" << err;
         emit refreshFailed(err);
-    });
+    }, Qt::UniqueConnection);
+
+    // 发送请求
+    ApiClient::instance()->get("/api/recommended-apps");
 }
 
 void RecommendedAppsCache::loadFromDatabase()
