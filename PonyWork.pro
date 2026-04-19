@@ -36,6 +36,7 @@ SOURCES += main.cpp \
            modules/widgets/synclogwidget.cpp \
            modules/widgets/bottomappbar.cpp \
            modules/widgets/userwidget.cpp \
+           modules/widgets/recommendappwidget.cpp \
            modules/update/updatemanager.cpp \
            modules/update/updatedialog.cpp \
            modules/update/updateprogressdialog.cpp \
@@ -72,6 +73,7 @@ HEADERS  += mainwindow.h \
             modules/widgets/synclogwidget.h \
             modules/widgets/bottomappbar.h \
             modules/widgets/userwidget.h \
+           modules/widgets/recommendappwidget.h \
             modules/core/appcollectiontypes.h \
             modules/update/updatemanager.h \
             modules/update/updatedialog.h \
@@ -91,7 +93,8 @@ HEADERS  += mainwindow.h \
 FORMS += modules/ui/appmanagerwidget.ui \
          modules/ui/shutdownwidget.ui \
          modules/ui/settingswidget.ui \
-         modules/ui/mainwindow.ui
+         modules/ui/mainwindow.ui \
+         modules/ui/recommendappwidget.ui
 
 RESOURCES += resources.qrc
 
