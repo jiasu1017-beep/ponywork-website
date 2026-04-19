@@ -2524,51 +2524,65 @@ app.post('/api/user/update-profile', authenticateToken, (req, res) => {
 
 // 客户端获取推荐应用列表（公开）
 app.get('/api/recommended-apps', (req, res) => {
-    const apps = db.prepare(`
+    db.all(`
         SELECT id, name, category, description, icon_url as iconUrl, sort_order as sortOrder
         FROM recommended_apps
         WHERE is_enabled = 1
         ORDER BY sort_order ASC, id ASC
-    `).all();
+    `, [], (err, apps) => {
+        if (err) {
+            return res.status(500).json({ code: 1, message: err.message });
+        }
 
-    // 获取每个应用的下载地址
-    const downloads = db.prepare(`
-        SELECT id, app_id as appId, name, url, sort_order as sortOrder
-        FROM recommended_app_downloads
-        WHERE app_id IN (SELECT id FROM recommended_apps WHERE is_enabled = 1)
-        ORDER BY sort_order ASC
-    `).all();
+        db.all(`
+            SELECT id, app_id as appId, name, url, sort_order as sortOrder
+            FROM recommended_app_downloads
+            WHERE app_id IN (SELECT id FROM recommended_apps WHERE is_enabled = 1)
+            ORDER BY sort_order ASC
+        `, [], (err, downloads) => {
+            if (err) {
+                return res.status(500).json({ code: 1, message: err.message });
+            }
 
-    // 合并数据
-    const appsWithDownloads = apps.map(app => {
-        app.downloads = downloads.filter(d => d.appId === app.id);
-        return app;
+            const appsWithDownloads = apps.map(app => {
+                app.downloads = downloads.filter(d => d.appId === app.id);
+                return app;
+            });
+
+            res.json({ code: 0, data: appsWithDownloads });
+        });
     });
-
-    res.json({ code: 0, data: appsWithDownloads });
 });
 
 // 管理员获取推荐应用列表
 app.get('/api/admin/recommended-apps', authenticateAdmin, (req, res) => {
-    const apps = db.prepare(`
+    db.all(`
         SELECT id, name, category, description, icon_url, sort_order, is_enabled,
                created_at, updated_at
         FROM recommended_apps
         ORDER BY sort_order ASC, id ASC
-    `).all();
+    `, [], (err, apps) => {
+        if (err) {
+            return res.status(500).json({ code: 1, message: err.message });
+        }
 
-    const downloads = db.prepare(`
-        SELECT id, app_id, name, url, sort_order
-        FROM recommended_app_downloads
-        ORDER BY sort_order ASC
-    `).all();
+        db.all(`
+            SELECT id, app_id, name, url, sort_order
+            FROM recommended_app_downloads
+            ORDER BY sort_order ASC
+        `, [], (err, downloads) => {
+            if (err) {
+                return res.status(500).json({ code: 1, message: err.message });
+            }
 
-    const appsWithDownloads = apps.map(app => {
-        app.downloads = downloads.filter(d => d.app_id === app.id);
-        return app;
+            const appsWithDownloads = apps.map(app => {
+                app.downloads = downloads.filter(d => d.app_id === app.id);
+                return app;
+            });
+
+            res.json({ code: 0, data: appsWithDownloads });
+        });
     });
-
-    res.json({ code: 0, data: appsWithDownloads });
 });
 
 // 新增推荐应用
@@ -2578,12 +2592,15 @@ app.post('/api/admin/recommended-apps', authenticateAdmin, (req, res) => {
         return res.status(400).json({ code: 1, message: 'name and category are required' });
     }
 
-    const result = db.prepare(`
+    db.run(`
         INSERT INTO recommended_apps (name, category, description, icon_url, sort_order, is_enabled)
         VALUES (?, ?, ?, ?, ?, ?)
-    `).run(name, category, description || '', iconUrl || '', sortOrder, isEnabled);
-
-    res.json({ code: 0, data: { id: result.lastInsertRowid } });
+    `, [name, category, description || '', iconUrl || '', sortOrder, isEnabled], function(err) {
+        if (err) {
+            return res.status(500).json({ code: 1, message: err.message });
+        }
+        res.json({ code: 0, data: { id: this.lastID } });
+    });
 });
 
 // 修改推荐应用
@@ -2607,15 +2624,23 @@ app.put('/api/admin/recommended-apps/:id', authenticateAdmin, (req, res) => {
     fields.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
 
-    db.prepare(`UPDATE recommended_apps SET ${fields.join(', ')} WHERE id = ?`).run(...values);
-    res.json({ code: 0 });
+    db.run(`UPDATE recommended_apps SET ${fields.join(', ')} WHERE id = ?`, values, function(err) {
+        if (err) {
+            return res.status(500).json({ code: 1, message: err.message });
+        }
+        res.json({ code: 0 });
+    });
 });
 
 // 删除推荐应用
 app.delete('/api/admin/recommended-apps/:id', authenticateAdmin, (req, res) => {
     const { id } = req.params;
-    db.prepare('DELETE FROM recommended_apps WHERE id = ?').run(id);
-    res.json({ code: 0 });
+    db.run('DELETE FROM recommended_apps WHERE id = ?', [id], function(err) {
+        if (err) {
+            return res.status(500).json({ code: 1, message: err.message });
+        }
+        res.json({ code: 0 });
+    });
 });
 
 // 新增下载地址
@@ -2626,19 +2651,26 @@ app.post('/api/admin/recommended-apps/:id/downloads', authenticateAdmin, (req, r
         return res.status(400).json({ code: 1, message: 'name and url are required' });
     }
 
-    const result = db.prepare(`
+    db.run(`
         INSERT INTO recommended_app_downloads (app_id, name, url, sort_order)
         VALUES (?, ?, ?, ?)
-    `).run(id, name, url, sortOrder);
-
-    res.json({ code: 0, data: { id: result.lastInsertRowid } });
+    `, [id, name, url, sortOrder], function(err) {
+        if (err) {
+            return res.status(500).json({ code: 1, message: err.message });
+        }
+        res.json({ code: 0, data: { id: this.lastID } });
+    });
 });
 
 // 删除下载地址
 app.delete('/api/admin/recommended-apps/:id/downloads/:did', authenticateAdmin, (req, res) => {
     const { did } = req.params;
-    db.prepare('DELETE FROM recommended_app_downloads WHERE id = ?').run(did);
-    res.json({ code: 0 });
+    db.run('DELETE FROM recommended_app_downloads WHERE id = ?', [did], function(err) {
+        if (err) {
+            return res.status(500).json({ code: 1, message: err.message });
+        }
+        res.json({ code: 0 });
+    });
 });
 
 app.get('/admin/*', (req, res) => {
