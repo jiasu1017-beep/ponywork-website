@@ -2,6 +2,7 @@
 #define RECOMMENDAPPWIDGET_H
 
 #include <QWidget>
+#include <QGridLayout>
 #include "../core/recommendedappscache.h"
 
 namespace Ui {
@@ -16,6 +17,9 @@ public:
     explicit RecommendAppWidget(QWidget *parent = nullptr);
     ~RecommendAppWidget();
 
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override;
+
 private slots:
     void onRefreshClicked();
     void onCategoryChanged(int index);
@@ -29,6 +33,7 @@ private:
 
     Ui::RecommendAppWidget *ui;
     QList<RecommendedApp> m_allApps;
+    QGridLayout* m_cardsLayout;
 };
 
 #endif // RECOMMENDAPPWIDGET_H

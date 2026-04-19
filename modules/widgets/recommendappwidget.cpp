@@ -7,14 +7,16 @@
 #include <QPushButton>
 #include <QComboBox>
 #include <QScrollArea>
-#include <QJsonDocument>
+#include <QGridLayout>
 #include <QDesktopServices>
 #include <QApplication>
 #include <QClipboard>
+#include <QEvent>
 
 RecommendAppWidget::RecommendAppWidget(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::RecommendAppWidget)
+    , m_cardsLayout(nullptr)
 {
     ui->setupUi(this);
     setupUI();
@@ -31,8 +33,16 @@ RecommendAppWidget::~RecommendAppWidget()
 
 void RecommendAppWidget::setupUI()
 {
-    ui->categoryComboBox->addItem("全部");
+    // 初始化卡片布局
+    QWidget* contents = ui->scrollAreaWidgetContents;
+    m_cardsLayout = new QGridLayout(contents);
+    m_cardsLayout->setSpacing(20);
+    m_cardsLayout->setContentsMargins(10, 10, 10, 10);
+
+    // 连接刷新按钮
     connect(ui->refreshBtn, &QPushButton::clicked, this, &RecommendAppWidget::onRefreshClicked);
+
+    // 连接分类下拉框
     connect(ui->categoryComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &RecommendAppWidget::onCategoryChanged);
 }
@@ -41,7 +51,7 @@ void RecommendAppWidget::loadApps()
 {
     m_allApps = RecommendedAppsCache::instance()->getApps();
 
-    QString current = ui->categoryComboBox->currentText();
+    // 更新分类下拉框
     ui->categoryComboBox->clear();
     ui->categoryComboBox->addItem("全部");
     for (const QString& cat : RecommendedAppsCache::instance()->getCategories()) {
@@ -118,11 +128,12 @@ void RecommendAppWidget::onAppCardClicked(int appId)
         dlLayout->addWidget(openBtn);
         dlLayout->addWidget(copyBtn);
 
-        connect(openBtn, &QPushButton::clicked, [dl]() {
-            QDesktopServices::openUrl(QUrl(dl.url));
+        QString url = dl.url;
+        connect(openBtn, &QPushButton::clicked, [url]() {
+            QDesktopServices::openUrl(QUrl(url));
         });
-        connect(copyBtn, &QPushButton::clicked, [dl]() {
-            QApplication::clipboard()->setText(dl.url);
+        connect(copyBtn, &QPushButton::clicked, [url]() {
+            QApplication::clipboard()->setText(url);
         });
 
         layout->addLayout(dlLayout);
@@ -138,9 +149,11 @@ void RecommendAppWidget::onAppCardClicked(int appId)
 
 void RecommendAppWidget::refreshCards(const QList<RecommendedApp>& apps)
 {
+    if (!m_cardsLayout) return;
+
     // 清除现有卡片
     QLayoutItem* child;
-    while ((child = ui->cardsLayout->takeAt(0)) != nullptr) {
+    while ((child = m_cardsLayout->takeAt(0)) != nullptr) {
         if (child->widget()) delete child->widget();
         delete child;
     }
@@ -150,7 +163,7 @@ void RecommendAppWidget::refreshCards(const QList<RecommendedApp>& apps)
     const int maxCols = 3;
     for (const auto& app : apps) {
         QWidget* card = createAppCard(app);
-        ui->cardsLayout->addWidget(card, row, col);
+        m_cardsLayout->addWidget(card, row, col);
         col++;
         if (col >= maxCols) { col = 0; row++; }
     }
@@ -162,6 +175,10 @@ QWidget* RecommendAppWidget::createAppCard(const RecommendedApp& app)
     card->setFixedSize(200, 180);
     card->setStyleSheet("QWidget { border: 1px solid #ddd; border-radius: 8px; background: white; }");
     card->setCursor(Qt::PointingHandCursor);
+    card->installEventFilter(this);
+
+    // 保存 app id
+    card->setProperty("appId", app.id);
 
     QVBoxLayout* layout = new QVBoxLayout(card);
 
@@ -192,8 +209,18 @@ QWidget* RecommendAppWidget::createAppCard(const RecommendedApp& app)
     descLabel->setFixedHeight(20);
     layout->addWidget(descLabel);
 
-    // 点击事件
-    connect(card, &QWidget::clicked, [this, app]() { onAppCardClicked(app.id); });
-
     return card;
+}
+
+bool RecommendAppWidget::eventFilter(QObject* obj, QEvent* event)
+{
+    if (event->type() == QEvent::MouseButtonPress) {
+        QWidget* card = qobject_cast<QWidget*>(obj);
+        if (card && card->property("appId").isValid()) {
+            int appId = card->property("appId").toInt();
+            onAppCardClicked(appId);
+            return true;
+        }
+    }
+    return QWidget::eventFilter(obj, event);
 }
