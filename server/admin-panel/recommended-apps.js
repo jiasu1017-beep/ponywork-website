@@ -9,19 +9,16 @@
     }
 
     // 加载应用列表
-    async function loadApps(page = 1) {
-        const search = document.getElementById('appSearch')?.value || '';
-
+    async function loadApps() {
         try {
-            const res = await fetch(`/api/admin/recommended-apps?page=${page}&limit=20&search=${encodeURIComponent(search)}`, {
+            const res = await fetch('/api/admin/recommended-apps', {
                 headers: { 'Authorization': 'Bearer ' + getAuthToken() }
             });
             const data = await res.json();
 
-            if (data.success) {
-                apps = data.apps || [];
+            if (data.code === 0) {
+                apps = data.data || [];
                 renderTable();
-                renderPagination('appsPagination', data.pagination, loadApps);
             } else {
                 showToast(data.message || '加载应用列表失败', 'danger');
             }
@@ -46,11 +43,11 @@
                 <td>${escapeHtml(app.category || '-')}</td>
                 <td>${app.downloads ? app.downloads.length : 0}</td>
                 <td>
-                    <span class="badge badge-${app.is_enabled ? 'active' : 'inactive'}">
-                        ${app.is_enabled ? '启用' : '禁用'}
+                    <span class="badge badge-${app.isEnabled ? 'active' : 'inactive'}">
+                        ${app.isEnabled ? '启用' : '禁用'}
                     </span>
                 </td>
-                <td>${app.sort_order || 0}</td>
+                <td>${app.sortOrder || 0}</td>
                 <td>
                     <button class="btn btn-sm btn-primary btn-action" onclick="RecommendedApps.edit(${app.id})" title="编辑">
                         <i class="bi bi-pencil"></i>
@@ -100,17 +97,17 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">图标URL</label>
-                                <input type="text" class="form-control" id="editAppIcon" value="${app ? escapeHtml(app.icon_url || '') : ''}" placeholder="https://...">
+                                <input type="text" class="form-control" id="editAppIcon" value="${app ? escapeHtml(app.iconUrl || '') : ''}" placeholder="https://...">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">排序</label>
-                                <input type="number" class="form-control" id="editAppSortOrder" value="${app ? app.sort_order : 0}" min="0">
+                                <input type="number" class="form-control" id="editAppSortOrder" value="${app ? app.sortOrder : 0}" min="0">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">状态</label>
                                 <select class="form-select" id="editAppStatus">
-                                    <option value="1" ${app && app.is_enabled ? 'selected' : ''}>启用</option>
-                                    <option value="0" ${!app || !app.is_enabled ? 'selected' : ''}>禁用</option>
+                                    <option value="1" ${app && app.isEnabled ? 'selected' : ''}>启用</option>
+                                    <option value="0" ${!app || !app.isEnabled ? 'selected' : ''}>禁用</option>
                                 </select>
                             </div>
                         </div>
@@ -138,9 +135,9 @@
         const name = document.getElementById('editAppName').value;
         const category = document.getElementById('editAppCategory').value;
         const description = document.getElementById('editAppDescription').value;
-        const icon_url = document.getElementById('editAppIcon').value;
-        const sort_order = parseInt(document.getElementById('editAppSortOrder').value) || 0;
-        const is_enabled = document.getElementById('editAppStatus').value === '1';
+        const iconUrl = document.getElementById('editAppIcon').value;
+        const sortOrder = parseInt(document.getElementById('editAppSortOrder').value) || 0;
+        const isEnabled = document.getElementById('editAppStatus').value === '1';
 
         if (!name) {
             showToast('应用名称不能为空', 'danger');
@@ -149,7 +146,7 @@
 
         const method = id ? 'PUT' : 'POST';
         const url = id ? `/api/admin/recommended-apps/${id}` : '/api/admin/recommended-apps';
-        const body = { name, category, description, icon_url, sort_order, is_enabled };
+        const body = { name, category, description, iconUrl, sortOrder, isEnabled };
 
         try {
             const res = await fetch(url, {
@@ -162,7 +159,7 @@
             });
             const data = await res.json();
 
-            if (data.success) {
+            if (data.code === 0) {
                 showToast(id ? '应用更新成功' : '应用创建成功', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('editAppModal'))?.hide();
                 loadApps();
@@ -186,7 +183,7 @@
             });
             const data = await res.json();
 
-            if (data.success) {
+            if (data.code === 0) {
                 showToast('删除成功', 'success');
                 loadApps();
             } else {
@@ -301,7 +298,7 @@
             });
             const data = await res.json();
 
-            if (data.success) {
+            if (data.code === 0) {
                 showToast('添加成功', 'success');
                 showDownloadsModal(appId);
             } else {
@@ -323,7 +320,7 @@
             });
             const data = await res.json();
 
-            if (data.success) {
+            if (data.code === 0) {
                 showToast('删除成功', 'success');
                 showDownloadsModal(appId);
             } else {
