@@ -1,6 +1,6 @@
 #include "recommendappwidget.h"
 #include "ui_recommendappwidget.h"
-#include "recommendedappscache.h"
+#include "../core/recommendedappscache.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>

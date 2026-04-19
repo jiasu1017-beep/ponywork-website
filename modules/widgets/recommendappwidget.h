@@ -2,7 +2,7 @@
 #define RECOMMENDAPPWIDGET_H
 
 #include <QWidget>
-#include "recommendedappscache.h"
+#include "../core/recommendedappscache.h"
 
 namespace Ui {
 class RecommendAppWidget;
