@@ -10,6 +10,7 @@
 #include "modules/widgets/collectionmanagerwidget.h"
 #include "modules/widgets/worklogwidget.h"
 #include "modules/widgets/memowidget.h"
+#include "modules/widgets/recommendappwidget.h"
 #include "modules/widgets/bottomappbar.h"
 #include "modules/update/updatedialog.h"
 #include "modules/update/updateprogressdialog.h"
@@ -208,7 +209,8 @@ void MainWindow::setupUI()
     workLogWidget = new WorkLogWidget(db, this);
 
     memoWidget = new MemoWidget(db, this);
-    
+    m_recommendAppWidget = new RecommendAppWidget(this);
+
     connect(appManagerWidget, &AppManagerWidget::resetAppsRequested, this, &MainWindow::resetApps);
     connect(remoteDesktopWidget, &RemoteDesktopWidget::appListNeedsRefresh, appManagerWidget, &AppManagerWidget::refreshAppList);
     connect(remoteDesktopWidget, &RemoteDesktopWidget::collectionNeedsRefresh, collectionManagerWidget, &CollectionManagerWidget::refreshCollectionList);
@@ -221,6 +223,7 @@ void MainWindow::setupUI()
     tabWidget->addTab(workLogWidget, QApplication::style()->standardIcon(QStyle::SP_FileDialogDetailedView), "工作日志");
     tabWidget->addTab(remoteDesktopWidget, QApplication::style()->standardIcon(QStyle::SP_ComputerIcon), "远程桌面");
     tabWidget->addTab(memoWidget, QApplication::style()->standardIcon(QStyle::SP_FileIcon), "备忘录");
+    tabWidget->addTab(m_recommendAppWidget, QApplication::style()->standardIcon(QStyle::SP_CommandLink), QString::fromUtf8("应用推荐"));
     tabWidget->addTab(shutdownWidget, QApplication::style()->standardIcon(QStyle::SP_BrowserStop), "定时关机");
     tabWidget->addTab(settingsWidget, QApplication::style()->standardIcon(QStyle::SP_FileDialogInfoView), "设置");
  

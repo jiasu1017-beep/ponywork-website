@@ -34,6 +34,7 @@ class RemoteDesktopWidget;
 class WorkLogWidget;
 class MemoWidget;
 class BottomAppBar;
+class RecommendAppWidget;
 
 class MainWindow : public QMainWindow
 {
@@ -121,6 +122,7 @@ private:
     QTimer *statusTimer;
     QString m_defaultStatusText;
     class UserMenuWidget *userMenuWidget;
+    RecommendAppWidget *m_recommendAppWidget;
 
     void setupGlobalShortcut();
     void toggleWindow();
