@@ -1,6 +1,4 @@
 #include "recommendappwidget.h"
-#include "ui_recommendappwidget.h"
-#include "../core/recommendedappscache.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -12,13 +10,16 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QEvent>
+#include <QDialog>
+#include <QTextEdit>
 
 RecommendAppWidget::RecommendAppWidget(QWidget *parent)
     : QWidget(parent)
-    , ui(new Ui::RecommendAppWidget)
+    , m_categoryComboBox(nullptr)
+    , m_refreshBtn(nullptr)
+    , m_scrollAreaWidgetContents(nullptr)
     , m_cardsLayout(nullptr)
 {
-    ui->setupUi(this);
     setupUI();
     loadApps();
 
@@ -28,22 +29,46 @@ RecommendAppWidget::RecommendAppWidget(QWidget *parent)
 
 RecommendAppWidget::~RecommendAppWidget()
 {
-    delete ui;
 }
 
 void RecommendAppWidget::setupUI()
 {
-    // 初始化卡片布局
-    QWidget* contents = ui->scrollAreaWidgetContents;
-    m_cardsLayout = new QGridLayout(contents);
+    QVBoxLayout* mainLayout = new QVBoxLayout(this);
+
+    // 工具栏
+    QHBoxLayout* toolbarLayout = new QHBoxLayout;
+
+    QLabel* categoryLabel = new QLabel("分类:");
+    toolbarLayout->addWidget(categoryLabel);
+
+    m_categoryComboBox = new QComboBox;
+    m_categoryComboBox->setMinimumWidth(150);
+    toolbarLayout->addWidget(m_categoryComboBox);
+
+    toolbarLayout->addStretch();
+
+    m_refreshBtn = new QPushButton("刷新");
+    toolbarLayout->addWidget(m_refreshBtn);
+
+    mainLayout->addLayout(toolbarLayout);
+
+    // 滚动区域
+    QScrollArea* scrollArea = new QScrollArea;
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setStyleSheet("QScrollArea { border: none; background-color: transparent; }");
+    scrollArea->setAlignment(Qt::AlignCenter);
+
+    m_scrollAreaWidgetContents = new QWidget;
+    m_cardsLayout = new QGridLayout(m_scrollAreaWidgetContents);
     m_cardsLayout->setSpacing(20);
     m_cardsLayout->setContentsMargins(10, 10, 10, 10);
 
-    // 连接刷新按钮
-    connect(ui->refreshBtn, &QPushButton::clicked, this, &RecommendAppWidget::onRefreshClicked);
+    scrollArea->setWidget(m_scrollAreaWidgetContents);
+    mainLayout->addWidget(scrollArea);
 
-    // 连接分类下拉框
-    connect(ui->categoryComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+    // 连接信号
+    connect(m_refreshBtn, &QPushButton::clicked, this, &RecommendAppWidget::onRefreshClicked);
+    connect(m_categoryComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &RecommendAppWidget::onCategoryChanged);
 }
 
@@ -52,10 +77,10 @@ void RecommendAppWidget::loadApps()
     m_allApps = RecommendedAppsCache::instance()->getApps();
 
     // 更新分类下拉框
-    ui->categoryComboBox->clear();
-    ui->categoryComboBox->addItem("全部");
+    m_categoryComboBox->clear();
+    m_categoryComboBox->addItem("全部");
     for (const QString& cat : RecommendedAppsCache::instance()->getCategories()) {
-        ui->categoryComboBox->addItem(cat);
+        m_categoryComboBox->addItem(cat);
     }
 
     refreshCards(m_allApps);
@@ -68,7 +93,7 @@ void RecommendAppWidget::onRefreshClicked()
 
 void RecommendAppWidget::onCategoryChanged(int index)
 {
-    QString category = ui->categoryComboBox->itemText(index);
+    QString category = m_categoryComboBox->itemText(index);
     if (category == "全部") {
         refreshCards(m_allApps);
     } else {

@@ -3,11 +3,10 @@
 
 #include <QWidget>
 #include <QGridLayout>
+#include <QScrollArea>
+#include <QComboBox>
+#include <QPushButton>
 #include "../core/recommendedappscache.h"
-
-namespace Ui {
-class RecommendAppWidget;
-}
 
 class RecommendAppWidget : public QWidget
 {
@@ -31,9 +30,11 @@ private:
     void refreshCards(const QList<RecommendedApp>& apps);
     QWidget* createAppCard(const RecommendedApp& app);
 
-    Ui::RecommendAppWidget *ui;
-    QList<RecommendedApp> m_allApps;
+    QComboBox* m_categoryComboBox;
+    QPushButton* m_refreshBtn;
+    QWidget* m_scrollAreaWidgetContents;
     QGridLayout* m_cardsLayout;
+    QList<RecommendedApp> m_allApps;
 };
 
 #endif // RECOMMENDAPPWIDGET_H

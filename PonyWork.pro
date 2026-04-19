@@ -93,8 +93,7 @@ HEADERS  += mainwindow.h \
 FORMS += modules/ui/appmanagerwidget.ui \
          modules/ui/shutdownwidget.ui \
          modules/ui/settingswidget.ui \
-         modules/ui/mainwindow.ui \
-         modules/ui/recommendappwidget.ui
+         modules/ui/mainwindow.ui
 
 RESOURCES += resources.qrc
 
