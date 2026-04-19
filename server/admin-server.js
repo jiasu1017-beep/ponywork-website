@@ -145,6 +145,33 @@ db.serialize(() => {
         FOREIGN KEY (user_id) REFERENCES users(id)
     )`);
 
+    // 推荐应用表
+    db.run(`
+        CREATE TABLE IF NOT EXISTS recommended_apps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            category TEXT NOT NULL,
+            description TEXT,
+            icon_url TEXT,
+            sort_order INTEGER DEFAULT 0,
+            is_enabled INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // 推荐应用下载地址表
+    db.run(`
+        CREATE TABLE IF NOT EXISTS recommended_app_downloads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            app_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            url TEXT NOT NULL,
+            sort_order INTEGER DEFAULT 0,
+            FOREIGN KEY (app_id) REFERENCES recommended_apps(id) ON DELETE CASCADE
+        )
+    `);
+
     const stmt = db.prepare("SELECT * FROM admin_users WHERE username = 'admin'");
     stmt.get((err, row) => {
         if (!row) {
@@ -2434,13 +2461,13 @@ app.post('/api/auth/change-password', authenticateToken, (req, res) => {
 app.post('/api/user/update-profile', authenticateToken, (req, res) => {
     const { username, avatar } = req.body;
     const userId = req.userId;
-    
+
     console.log(`\n[更新资料] 用户 ID: ${userId}`);
-    
+
     // 构建更新语句
     let updates = [];
     let params = [];
-    
+
     if (username) {
         // 检查用户名是否已被其他用户使用
         db.get("SELECT id FROM users WHERE username = ? AND id != ?", [username, userId], (err, existingUser) => {
@@ -2454,30 +2481,30 @@ app.post('/api/user/update-profile', authenticateToken, (req, res) => {
         updates.push("username = ?");
         params.push(username);
     }
-    
+
     if (avatar !== undefined) {
         updates.push("avatar = ?");
         params.push(avatar);
     }
-    
+
     if (updates.length === 0) {
         return res.status(400).json({ success: false, error: '没有要更新的内容' });
     }
-    
+
     params.push(userId);
-    
+
     db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params, function(err) {
         if (err) {
             console.log(`  - 失败：${err.message}`);
             return res.status(500).json({ success: false, error: '更新资料失败' });
         }
-        
+
         // 返回更新后的用户信息
         db.get("SELECT id, email, username, avatar, created_at, last_login FROM users WHERE id = ?", [userId], (err, user) => {
             if (err || !user) {
                 return res.status(500).json({ success: false, error: '获取用户信息失败' });
             }
-            
+
             res.json({
                 success: true,
                 message: '资料更新成功',
@@ -2493,6 +2520,125 @@ app.post('/api/user/update-profile', authenticateToken, (req, res) => {
             });
         });
     });
+});
+
+// 客户端获取推荐应用列表（公开）
+app.get('/api/recommended-apps', (req, res) => {
+    const apps = db.prepare(`
+        SELECT id, name, category, description, icon_url as iconUrl, sort_order as sortOrder
+        FROM recommended_apps
+        WHERE is_enabled = 1
+        ORDER BY sort_order ASC, id ASC
+    `).all();
+
+    // 获取每个应用的下载地址
+    const downloads = db.prepare(`
+        SELECT id, app_id as appId, name, url, sort_order as sortOrder
+        FROM recommended_app_downloads
+        WHERE app_id IN (SELECT id FROM recommended_apps WHERE is_enabled = 1)
+        ORDER BY sort_order ASC
+    `).all();
+
+    // 合并数据
+    const appsWithDownloads = apps.map(app => {
+        app.downloads = downloads.filter(d => d.appId === app.id);
+        return app;
+    });
+
+    res.json({ code: 0, data: appsWithDownloads });
+});
+
+// 管理员获取推荐应用列表
+app.get('/api/admin/recommended-apps', authenticateAdmin, (req, res) => {
+    const apps = db.prepare(`
+        SELECT id, name, category, description, icon_url, sort_order, is_enabled,
+               created_at, updated_at
+        FROM recommended_apps
+        ORDER BY sort_order ASC, id ASC
+    `).all();
+
+    const downloads = db.prepare(`
+        SELECT id, app_id, name, url, sort_order
+        FROM recommended_app_downloads
+        ORDER BY sort_order ASC
+    `).all();
+
+    const appsWithDownloads = apps.map(app => {
+        app.downloads = downloads.filter(d => d.app_id === app.id);
+        return app;
+    });
+
+    res.json({ code: 0, data: appsWithDownloads });
+});
+
+// 新增推荐应用
+app.post('/api/admin/recommended-apps', authenticateAdmin, (req, res) => {
+    const { name, category, description, iconUrl, sortOrder = 0, isEnabled = 1 } = req.body;
+    if (!name || !category) {
+        return res.status(400).json({ code: 1, message: 'name and category are required' });
+    }
+
+    const result = db.prepare(`
+        INSERT INTO recommended_apps (name, category, description, icon_url, sort_order, is_enabled)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `).run(name, category, description || '', iconUrl || '', sortOrder, isEnabled);
+
+    res.json({ code: 0, data: { id: result.lastInsertRowid } });
+});
+
+// 修改推荐应用
+app.put('/api/admin/recommended-apps/:id', authenticateAdmin, (req, res) => {
+    const { id } = req.params;
+    const { name, category, description, iconUrl, sortOrder, isEnabled } = req.body;
+
+    const fields = [];
+    const values = [];
+    if (name) { fields.push('name = ?'); values.push(name); }
+    if (category) { fields.push('category = ?'); values.push(category); }
+    if (description !== undefined) { fields.push('description = ?'); values.push(description); }
+    if (iconUrl !== undefined) { fields.push('icon_url = ?'); values.push(iconUrl); }
+    if (sortOrder !== undefined) { fields.push('sort_order = ?'); values.push(sortOrder); }
+    if (isEnabled !== undefined) { fields.push('is_enabled = ?'); values.push(isEnabled); }
+
+    if (fields.length === 0) {
+        return res.status(400).json({ code: 1, message: 'no fields to update' });
+    }
+
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+
+    db.prepare(`UPDATE recommended_apps SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+    res.json({ code: 0 });
+});
+
+// 删除推荐应用
+app.delete('/api/admin/recommended-apps/:id', authenticateAdmin, (req, res) => {
+    const { id } = req.params;
+    db.prepare('DELETE FROM recommended_apps WHERE id = ?').run(id);
+    res.json({ code: 0 });
+});
+
+// 新增下载地址
+app.post('/api/admin/recommended-apps/:id/downloads', authenticateAdmin, (req, res) => {
+    const { id } = req.params;
+    const { name, url, sortOrder = 0 } = req.body;
+    if (!name || !url) {
+        return res.status(400).json({ code: 1, message: 'name and url are required' });
+    }
+
+    const result = db.prepare(`
+        INSERT INTO recommended_app_downloads (app_id, name, url, sort_order)
+        VALUES (?, ?, ?, ?)
+    `).run(id, name, url, sortOrder);
+
+    res.json({ code: 0, data: { id: result.lastInsertRowid } });
+});
+
+// 删除下载地址
+app.delete('/api/admin/recommended-apps/:id/downloads/:did', authenticateAdmin, (req, res) => {
+    const { did } = req.params;
+    db.prepare('DELETE FROM recommended_app_downloads WHERE id = ?').run(did);
+    res.json({ code: 0 });
 });
 
 app.get('/admin/*', (req, res) => {
