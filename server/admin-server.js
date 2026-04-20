@@ -2711,12 +2711,16 @@ app.post('/api/admin/recommended-apps/:id/icon', authenticateAdmin, (req, res) =
         }
 
         // 解析 base64 数据
-        const matches = iconData.match(/^data:image\/(\w+);base64,(.+)$/);
+        const matches = iconData.match(/^data:image\/(\w+(?:[-+]?\w+)?);base64,(.+)$/);
         if (!matches) {
             return res.status(400).json({ code: 1, message: '无效的图片数据格式' });
         }
 
-        const ext = matches[1]; // png, jpg, gif, etc.
+        let ext = matches[1]; // png, jpg, gif, x-icon, etc.
+        // 将 x-icon 转换为 ico
+        if (ext === 'x-icon') {
+            ext = 'ico';
+        }
         const data = Buffer.from(matches[2], 'base64');
 
         // 生成唯一文件名
