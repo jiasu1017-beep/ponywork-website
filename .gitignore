@@ -5,3 +5,4 @@ build/
 deploy/
 debug/
 .trae/
+server/node_modules/
