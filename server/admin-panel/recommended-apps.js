@@ -43,11 +43,11 @@
                 <td>${escapeHtml(app.category || '-')}</td>
                 <td>${app.downloads ? app.downloads.length : 0}</td>
                 <td>
-                    <span class="badge badge-${app.isEnabled ? 'active' : 'inactive'}">
-                        ${app.isEnabled ? '启用' : '禁用'}
+                    <span class="badge badge-${app.is_enabled ? 'active' : 'inactive'}">
+                        ${app.is_enabled ? '启用' : '禁用'}
                     </span>
                 </td>
-                <td>${app.sortOrder || 0}</td>
+                <td>${app.sort_order || 0}</td>
                 <td>
                     <button class="btn btn-sm btn-primary btn-action" onclick="RecommendedApps.edit(${app.id})" title="编辑">
                         <i class="bi bi-pencil"></i>
@@ -73,6 +73,13 @@
             existingModal.remove();
         }
 
+        const currentIconUrl = app ? (app.icon_url || '') : '';
+        // 添加 /public 前缀，因为静态文件在 /public 目录下
+        const iconSrc = currentIconUrl.startsWith('/') ? '/public' + currentIconUrl : currentIconUrl;
+        const iconPreview = currentIconUrl
+            ? `<img src="${escapeHtml(iconSrc)}" id="iconPreview" style="max-width: 100px; max-height: 100px; object-fit: contain;">`
+            : `<div id="iconPreviewPlaceholder" style="width: 100px; height: 100px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; color: #999; font-size: 12px;">暂无图标</div>`;
+
         const modalHtml = `
             <div class="modal fade" id="${modalId}" tabindex="-1">
                 <div class="modal-dialog">
@@ -83,6 +90,7 @@
                         </div>
                         <div class="modal-body">
                             <input type="hidden" id="editAppId" value="${app ? app.id : ''}">
+                            <input type="hidden" id="editAppIconUrl" value="${escapeHtml(currentIconUrl)}">
                             <div class="mb-3">
                                 <label class="form-label">应用名称</label>
                                 <input type="text" class="form-control" id="editAppName" value="${app ? escapeHtml(app.name) : ''}" required>
@@ -96,18 +104,25 @@
                                 <textarea class="form-control" id="editAppDescription" rows="3" placeholder="应用简介">${app ? escapeHtml(app.description || '') : ''}</textarea>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">图标URL</label>
-                                <input type="text" class="form-control" id="editAppIcon" value="${app ? escapeHtml(app.iconUrl || '') : ''}" placeholder="https://...">
+                                <label class="form-label">应用图标</label>
+                                <div class="d-flex align-items-center gap-3">
+                                    <div id="iconPreviewContainer">${iconPreview}</div>
+                                    <div>
+                                        <input type="file" class="form-control" id="editAppIconFile" accept="image/*" style="width: 200px;">
+                                        <input type="hidden" id="editAppIconBase64" value="">
+                                        <small class="text-muted d-block mt-1">支持 PNG、JPG、GIF，建议尺寸 128x128</small>
+                                    </div>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">排序</label>
-                                <input type="number" class="form-control" id="editAppSortOrder" value="${app ? app.sortOrder : 0}" min="0">
+                                <input type="number" class="form-control" id="editAppSortOrder" value="${app ? app.sort_order : 0}" min="0">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">状态</label>
                                 <select class="form-select" id="editAppStatus">
-                                    <option value="1" ${app && app.isEnabled ? 'selected' : ''}>启用</option>
-                                    <option value="0" ${!app || !app.isEnabled ? 'selected' : ''}>禁用</option>
+                                    <option value="1" ${app && app.is_enabled ? 'selected' : ''}>启用</option>
+                                    <option value="0" ${!app || !app.is_enabled ? 'selected' : ''}>禁用</option>
                                 </select>
                             </div>
                         </div>
@@ -124,9 +139,49 @@
         const modal = new bootstrap.Modal(document.getElementById(modalId));
         modal.show();
 
+        // 绑定图标文件选择事件
+        document.getElementById('editAppIconFile').addEventListener('change', handleIconFileSelect);
+
         document.getElementById(modalId).addEventListener('hidden.bs.modal', function() {
             this.remove();
         });
+    }
+
+    // 处理图标文件选择
+    function handleIconFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            showToast('请选择图片文件', 'danger');
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) { // 2MB limit
+            showToast('图片大小不能超过 2MB', 'danger');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const base64 = event.target.result;
+            document.getElementById('editAppIconBase64').value = base64;
+
+            // 显示预览
+            let preview = document.getElementById('iconPreview');
+            if (!preview) {
+                const placeholder = document.getElementById('iconPreviewPlaceholder');
+                if (placeholder) placeholder.remove();
+                preview = document.createElement('img');
+                preview.id = 'iconPreview';
+                preview.style.maxWidth = '100px';
+                preview.style.maxHeight = '100px';
+                preview.style.objectFit = 'contain';
+                document.getElementById('iconPreviewContainer').appendChild(preview);
+            }
+            preview.src = base64;
+        };
+        reader.readAsDataURL(file);
     }
 
     // 保存应用
@@ -135,9 +190,9 @@
         const name = document.getElementById('editAppName').value;
         const category = document.getElementById('editAppCategory').value;
         const description = document.getElementById('editAppDescription').value;
-        const iconUrl = document.getElementById('editAppIcon').value;
         const sortOrder = parseInt(document.getElementById('editAppSortOrder').value) || 0;
         const isEnabled = document.getElementById('editAppStatus').value === '1';
+        const iconBase64 = document.getElementById('editAppIconBase64').value;
 
         if (!name) {
             showToast('应用名称不能为空', 'danger');
@@ -146,7 +201,7 @@
 
         const method = id ? 'PUT' : 'POST';
         const url = id ? `/api/admin/recommended-apps/${id}` : '/api/admin/recommended-apps';
-        const body = { name, category, description, iconUrl, sortOrder, isEnabled };
+        const body = { name, category, description, sortOrder, isEnabled };
 
         try {
             const res = await fetch(url, {
@@ -160,6 +215,33 @@
             const data = await res.json();
 
             if (data.code === 0) {
+                // 编辑模式下 id 来自表单，創建模式下 id 来自返回数据
+                const savedAppId = id || (data.data && data.data.id);
+
+                // 如果有新选择的图标，上传图标
+                if (iconBase64 && savedAppId) {
+                    try {
+                        const iconRes = await fetch(`/api/admin/recommended-apps/${savedAppId}/icon`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + getAuthToken()
+                            },
+                            body: JSON.stringify({ iconData: iconBase64 })
+                        });
+                        const iconData = await iconRes.json();
+                        if (iconData.code !== 0) {
+                            console.error('图标上传失败:', iconData.message);
+                            showToast('应用保存成功，但图标上传失败: ' + iconData.message, 'warning');
+                            return;
+                        }
+                    } catch (iconErr) {
+                        console.error('图标上传错误:', iconErr);
+                        showToast('应用保存成功，但图标上传失败', 'warning');
+                        return;
+                    }
+                }
+
                 showToast(id ? '应用更新成功' : '应用创建成功', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('editAppModal'))?.hide();
                 loadApps();

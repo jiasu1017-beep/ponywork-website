@@ -12,6 +12,11 @@
 #include <QEvent>
 #include <QDialog>
 #include <QTextEdit>
+#include <QNetworkRequest>
+#include <QNetworkAccessManager>
+#include <QPixmap>
+#include <QUrl>
+#include <userapi.h>
 
 RecommendAppWidget::RecommendAppWidget(QWidget *parent)
     : QWidget(parent)
@@ -19,7 +24,10 @@ RecommendAppWidget::RecommendAppWidget(QWidget *parent)
     , m_refreshBtn(nullptr)
     , m_scrollAreaWidgetContents(nullptr)
     , m_cardsLayout(nullptr)
+    , m_networkManager(nullptr)
 {
+    m_networkManager = new QNetworkAccessManager(this);
+
     setupUI();
     loadApps();
 
@@ -33,6 +41,89 @@ RecommendAppWidget::RecommendAppWidget(QWidget *parent)
 
 RecommendAppWidget::~RecommendAppWidget()
 {
+}
+
+void RecommendAppWidget::loadIcon(const QString& iconUrl, QLabel* iconLabel)
+{
+    if (iconUrl.isEmpty()) {
+        iconLabel->setText("📦");
+        return;
+    }
+
+    QString fullUrl = iconUrl;
+    if (iconUrl.startsWith("/")) {
+        // 添加 /public 前缀，因为服务器静态文件在 /public 目录下
+        fullUrl = QString(CLOUD_API_URL) + "/public" + iconUrl;
+    } else if (!iconUrl.startsWith("http")) {
+        fullUrl = QString(CLOUD_API_URL) + "/public/" + iconUrl;
+    }
+
+    QUrl url(fullUrl);
+    QNetworkRequest netRequest;
+    netRequest.setUrl(url);
+    QNetworkReply* reply = m_networkManager->get(netRequest);
+    m_pendingIconRequests[fullUrl] = iconLabel;
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply, fullUrl]() {
+        QLabel* label = m_pendingIconRequests.value(fullUrl);
+        if (label && reply->error() == QNetworkReply::NoError) {
+            QPixmap pixmap;
+            if (pixmap.loadFromData(reply->readAll())) {
+                QPixmap scaled = pixmap.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                label->setPixmap(scaled);
+                label->setText("");
+            } else {
+                label->setText("📦");
+            }
+        } else if (label) {
+            label->setText("📦");
+        }
+        m_pendingIconRequests.remove(fullUrl);
+        reply->deleteLater();
+    });
+}
+
+void RecommendAppWidget::loadIconLarge(const QString& iconUrl, QLabel* iconLabel)
+{
+    if (iconUrl.isEmpty()) {
+        iconLabel->setText("📦");
+        return;
+    }
+
+    QString fullUrl = iconUrl;
+    if (iconUrl.startsWith("/")) {
+        // 添加 /public 前缀，因为服务器静态文件在 /public 目录下
+        fullUrl = QString(CLOUD_API_URL) + "/public" + iconUrl;
+    } else if (!iconUrl.startsWith("http")) {
+        fullUrl = QString(CLOUD_API_URL) + "/public/" + iconUrl;
+    }
+
+    QUrl url(fullUrl);
+    QNetworkRequest netRequest;
+    netRequest.setUrl(url);
+    QNetworkReply* reply = m_networkManager->get(netRequest);
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply, iconLabel]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            QPixmap pixmap;
+            if (pixmap.loadFromData(reply->readAll())) {
+                // 详情对话框使用更大的图标
+                QPixmap scaled = pixmap.scaled(120, 120, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                iconLabel->setPixmap(scaled);
+                iconLabel->setText("");
+            } else {
+                iconLabel->setText("📦");
+            }
+        } else {
+            iconLabel->setText("📦");
+        }
+        reply->deleteLater();
+    });
+}
+
+void RecommendAppWidget::onIconLoaded(QNetworkReply* reply)
+{
+    reply->deleteLater();
 }
 
 void RecommendAppWidget::setupUI()
@@ -128,6 +219,11 @@ void RecommendAppWidget::onAppCardClicked(int appId)
     iconLabel->setText("📦");
     layout->addWidget(iconLabel, 0, Qt::AlignHCenter);
 
+    // 加载图标
+    if (!app.iconUrl.isEmpty()) {
+        loadIconLarge(app.iconUrl, iconLabel);
+    }
+
     // 名称
     QLabel* nameLabel = new QLabel(app.name);
     nameLabel->setStyleSheet("font-size: 18px; font-weight: bold;");
@@ -187,6 +283,15 @@ void RecommendAppWidget::refreshCards(const QList<RecommendedApp>& apps)
         delete child;
     }
 
+    // 如果没有应用，显示提示信息
+    if (apps.isEmpty()) {
+        QLabel* emptyLabel = new QLabel("暂无推荐应用，请稍后刷新或联系管理员添加");
+        emptyLabel->setAlignment(Qt::AlignCenter);
+        emptyLabel->setStyleSheet("color: #888; font-size: 14px; padding: 50px;");
+        m_cardsLayout->addWidget(emptyLabel, 0, 0, 1, 3);
+        return;
+    }
+
     // 创建新卡片（网格布局，每行3个）
     int row = 0, col = 0;
     const int maxCols = 3;
@@ -217,6 +322,11 @@ QWidget* RecommendAppWidget::createAppCard(const RecommendedApp& app)
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setText("📦");
     layout->addWidget(iconLabel, 0, Qt::AlignHCenter);
+
+    // 异步加载图标
+    if (!app.iconUrl.isEmpty()) {
+        loadIcon(app.iconUrl, iconLabel);
+    }
 
     // 名称
     QLabel* nameLabel = new QLabel(app.name);
