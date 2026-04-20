@@ -20,6 +20,12 @@ if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
 
+// 推荐应用图标上传目录
+const ICONS_UPLOAD_DIR = path.join(__dirname, 'public', 'app-icons');
+if (!fs.existsSync(ICONS_UPLOAD_DIR)) {
+    fs.mkdirSync(ICONS_UPLOAD_DIR, { recursive: true });
+}
+
 const db = new sqlite3.Database(DB_PATH);
 
 db.serialize(() => {
@@ -186,6 +192,8 @@ db.serialize(() => {
 });
 
 app.use('/admin', express.static(path.join(__dirname, 'admin-panel')));
+// 静态文件服务 - 用于推荐应用图标
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 app.post('/api/admin/login', (req, res) => {
     const { username, password } = req.body;
@@ -2554,6 +2562,87 @@ app.get('/api/recommended-apps', (req, res) => {
     });
 });
 
+// 测试用：添加推荐应用测试数据
+app.post('/api/test/recommended-apps', (req, res) => {
+    const testApps = [
+        {
+            name: 'Visual Studio Code',
+            category: '开发工具',
+            description: '轻量级代码编辑器，支持多种编程语言',
+            icon_url: 'https://code.visualstudio.com/favicon.ico',
+            downloads: [
+                { name: 'Windows', url: 'https://code.visualstudio.com/download?windows' },
+                { name: 'macOS', url: 'https://code.visualstudio.com/download?mac' },
+                { name: 'Linux', url: 'https://code.visualstudio.com/download?linux' }
+            ]
+        },
+        {
+            name: 'Notepad++',
+            category: '开发工具',
+            description: '免费的源代码编辑器，支持多种编程语言',
+            icon_url: '',
+            downloads: [
+                { name: 'Windows', url: 'https://notepad-plus-plus.org/downloads/' }
+            ]
+        },
+        {
+            name: 'Git',
+            category: '开发工具',
+            description: '分布式版本控制系统',
+            icon_url: '',
+            downloads: [
+                { name: 'Windows', url: 'https://git-scm.com/download/win' },
+                { name: 'macOS', url: 'https://git-scm.com/download/mac' }
+            ]
+        },
+        {
+            name: 'Docker Desktop',
+            category: '开发工具',
+            description: '容器化开发平台',
+            icon_url: '',
+            downloads: [
+                { name: 'Windows', url: 'https://www.docker.com/products/docker-desktop' },
+                { name: 'macOS', url: 'https://www.docker.com/products/docker-desktop' }
+            ]
+        }
+    ];
+
+    const stmt = db.prepare(`
+        INSERT INTO recommended_apps (name, category, description, icon_url, sort_order, is_enabled)
+        VALUES (?, ?, ?, ?, ?, 1)
+    `);
+    const dlStmt = db.prepare(`
+        INSERT INTO recommended_app_downloads (app_id, name, url, sort_order)
+        VALUES (?, ?, ?, ?)
+    `);
+
+    db.run("DELETE FROM recommended_app_downloads", (err) => {
+        if (err) return res.status(500).json({ code: 1, message: err.message });
+
+        db.run("DELETE FROM recommended_apps", (err) => {
+            if (err) return res.status(500).json({ code: 1, message: err.message });
+
+            let insertedCount = 0;
+            testApps.forEach((app, appIndex) => {
+                stmt.run(app.name, app.category, app.description, app.icon_url, appIndex, function(err) {
+                    if (err) {
+                        console.error('Insert app error:', err);
+                        return;
+                    }
+                    const appId = this.lastID;
+                    app.downloads.forEach((dl, dlIndex) => {
+                        dlStmt.run(appId, dl.name, dl.url, dlIndex);
+                    });
+                    insertedCount++;
+                    if (insertedCount === testApps.length) {
+                        res.json({ code: 0, message: 'Test data added successfully', count: testApps.length });
+                    }
+                });
+            });
+        });
+    });
+});
+
 // 管理员获取推荐应用列表
 app.get('/api/admin/recommended-apps', authenticateAdmin, (req, res) => {
     db.all(`
@@ -2600,6 +2689,62 @@ app.post('/api/admin/recommended-apps', authenticateAdmin, (req, res) => {
             return res.status(500).json({ code: 1, message: err.message });
         }
         res.json({ code: 0, data: { id: this.lastID } });
+    });
+});
+
+// 上传推荐应用图标
+app.post('/api/admin/recommended-apps/:id/icon', authenticateAdmin, (req, res) => {
+    const { id } = req.params;
+    const { iconData } = req.body; // base64 编码的图片数据
+
+    if (!iconData) {
+        return res.status(400).json({ code: 1, message: '图标数据不能为空' });
+    }
+
+    // 验证应用是否存在
+    db.get('SELECT id FROM recommended_apps WHERE id = ?', [id], (err, row) => {
+        if (err) {
+            return res.status(500).json({ code: 1, message: err.message });
+        }
+        if (!row) {
+            return res.status(404).json({ code: 1, message: '应用不存在' });
+        }
+
+        // 解析 base64 数据
+        const matches = iconData.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (!matches) {
+            return res.status(400).json({ code: 1, message: '无效的图片数据格式' });
+        }
+
+        const ext = matches[1]; // png, jpg, gif, etc.
+        const data = Buffer.from(matches[2], 'base64');
+
+        // 生成唯一文件名
+        const filename = `app_icon_${id}_${Date.now()}.${ext}`;
+        const filepath = path.join(ICONS_UPLOAD_DIR, filename);
+
+        // 删除旧图标（如果存在）
+        db.get('SELECT icon_url FROM recommended_apps WHERE id = ?', [id], (err, oldRow) => {
+            if (oldRow && oldRow.icon_url) {
+                const oldFilepath = path.join(__dirname, 'public', oldRow.icon_url);
+                if (fs.existsSync(oldFilepath)) {
+                    fs.unlinkSync(oldFilepath);
+                }
+            }
+
+            // 保存新图标
+            fs.writeFileSync(filepath, data);
+
+            // 更新数据库中的图标路径
+            const iconPath = `/app-icons/${filename}`;
+            db.run('UPDATE recommended_apps SET icon_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [iconPath, id], function(err) {
+                    if (err) {
+                        return res.status(500).json({ code: 1, message: err.message });
+                    }
+                    res.json({ code: 0, data: { iconUrl: iconPath } });
+                });
+        });
     });
 });
 

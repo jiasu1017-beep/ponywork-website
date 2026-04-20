@@ -176,14 +176,14 @@ mkdir -p admin-panel data
 
 ```
 scp 
-F:\00AI\Test\website\admin-server.
+F:\00AI\PonyWork\website\admin-server.
 js root@8.163.37.74:/var/www/
 ponywork-admin/
-scp F:\00AI\Test\website\package.
+scp F:\00AI\PonyWork\website\package.
 json root@8.163.37.74:/var/www/
 ponywork-admin/
 scp -r 
-F:\00AI\Test\website\admin-panel 
+F:\00AI\PonyWork\website\admin-panel 
 root@8.163.37.74:/var/www/
 ponywork-admin/
 ```
