@@ -6,3 +6,4 @@ deploy/
 debug/
 .trae/
 server/node_modules/
+server/public/
