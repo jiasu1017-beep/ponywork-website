@@ -22,6 +22,7 @@ public:
 
 protected:
     bool eventFilter(QObject* obj, QEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 
 private slots:
     void onRefreshClicked();
@@ -40,6 +41,7 @@ private:
     QComboBox* m_categoryComboBox;
     QPushButton* m_refreshBtn;
     QWidget* m_scrollAreaWidgetContents;
+    QScrollArea* m_scrollArea;
     QGridLayout* m_cardsLayout;
     QList<RecommendedApp> m_allApps;
     QNetworkAccessManager* m_networkManager;
