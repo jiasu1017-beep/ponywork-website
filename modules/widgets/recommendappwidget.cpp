@@ -108,8 +108,8 @@ void RecommendAppWidget::loadIconLarge(const QString& iconUrl, QLabel* iconLabel
         if (reply->error() == QNetworkReply::NoError) {
             QPixmap pixmap;
             if (pixmap.loadFromData(reply->readAll())) {
-                // 详情对话框使用更大的图标
-                QPixmap scaled = pixmap.scaled(120, 120, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                // 缩放到标签大小，保持宽高比
+                QPixmap scaled = pixmap.scaled(100, 100, Qt::KeepAspectRatio, Qt::SmoothTransformation);
                 iconLabel->setPixmap(scaled);
                 iconLabel->setText("");
             } else {
@@ -217,7 +217,7 @@ void RecommendAppWidget::onAppCardClicked(int appId)
 
     // 顶部卡片 - 图标、名称、分类
     QWidget* headerCard = new QWidget;
-    headerCard->setStyleSheet("QWidget { background: white; border-radius: 12px; border: 1px solid #dce0e8; }");
+    headerCard->setStyleSheet("QWidget { background: white; border-radius: 12px; }");
     QVBoxLayout* headerLayout = new QVBoxLayout(headerCard);
     headerLayout->setSpacing(10);
     headerLayout->setContentsMargins(20, 20, 20, 20);
@@ -250,7 +250,7 @@ void RecommendAppWidget::onAppCardClicked(int appId)
 
     // 简介区域 - 可滚动
     QWidget* descCard = new QWidget;
-    descCard->setStyleSheet("QWidget { background: white; border-radius: 12px; border: 1px solid #dce0e8; }");
+    descCard->setStyleSheet("QWidget { background: white; border-radius: 12px; }");
     QVBoxLayout* descLayout = new QVBoxLayout(descCard);
     descLayout->setContentsMargins(15, 15, 15, 15);
 
@@ -259,7 +259,7 @@ void RecommendAppWidget::onAppCardClicked(int appId)
     descLayout->addWidget(descTitle);
 
     QScrollArea* descScrollArea = new QScrollArea;
-    descScrollArea->setStyleSheet("QScrollArea { border: none; background: transparent; }");
+    descScrollArea->setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { width: 4px; background: transparent; } QScrollBar::handle:vertical { background: #ccc; border-radius: 2px; min-height: 15px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }");
     descScrollArea->setWidgetResizable(true);
     descScrollArea->setFixedHeight(80);
 
@@ -273,7 +273,7 @@ void RecommendAppWidget::onAppCardClicked(int appId)
 
     // 下载地址区域
     QWidget* dlCard = new QWidget;
-    dlCard->setStyleSheet("QWidget { background: white; border-radius: 12px; border: 1px solid #dce0e8; }");
+    dlCard->setStyleSheet("QWidget { background: white; border-radius: 12px; }");
     QVBoxLayout* dlLayout = new QVBoxLayout(dlCard);
     dlLayout->setContentsMargins(15, 15, 15, 15);
 
@@ -287,9 +287,9 @@ void RecommendAppWidget::onAppCardClicked(int appId)
         QHBoxLayout* dlItemLayout = new QHBoxLayout(dlItem);
         dlItemLayout->setContentsMargins(12, 8, 12, 8);
 
-        // 平台名称
-        QLabel* platformLabel = new QLabel(dl.name);
-        platformLabel->setStyleSheet("font-size: 13px; color: #333; font-weight: 500;");
+        // 平台名称（超链接）
+        QLabel* platformLabel = new QLabel(QString("<a href='%1' style='color: #4A90D9; text-decoration: none; font-size: 13px;'>%2</a>").arg(dl.url).arg(dl.name));
+        platformLabel->setOpenExternalLinks(true);
         dlItemLayout->addWidget(platformLabel);
 
         dlItemLayout->addStretch();
@@ -368,7 +368,7 @@ QWidget* RecommendAppWidget::createAppCard(const RecommendedApp& app)
 {
     QWidget* card = new QWidget;
     card->setFixedSize(200, 200);
-    card->setStyleSheet("QWidget { border: 1px solid #e0e0e0; border-radius: 8px; background: white; } QWidget:hover { border-color: #4A90D9; background: #f8f9fa; }");
+    card->setStyleSheet("QWidget { border: none; border-radius: 8px; background: white; } QWidget:hover { background: #f0f7ff; }");
     card->setCursor(Qt::PointingHandCursor);
     card->installEventFilter(this);
 
@@ -409,7 +409,7 @@ QWidget* RecommendAppWidget::createAppCard(const RecommendedApp& app)
     QScrollArea* descScroll = new QScrollArea;
     descScroll->setStyleSheet("QScrollArea { border: none; background: transparent; } QScrollBar:vertical { width: 4px; background: transparent; } QScrollBar::handle:vertical { background: #ccc; border-radius: 2px; min-height: 15px; } QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }");
     descScroll->setWidgetResizable(true);
-    descScroll->setFixedHeight(36);
+    descScroll->setFixedHeight(40);
 
     QLabel* descLabel = new QLabel(app.description);
     descLabel->setStyleSheet("font-size: 12px; color: #666; background: transparent; padding: 2px;");
