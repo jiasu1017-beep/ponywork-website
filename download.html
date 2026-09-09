@@ -42,6 +42,7 @@
                     <p class="version-info">最新稳定版本 · 2026-09-08 发布</p>
                     <p class="file-info">推荐大多数用户使用</p>
                     <a href="https://github.com/jiasu1017-beep/ponywork-website/releases/download/v1.0.9/PonyWork-v1.0.9-win64.zip" class="btn btn-primary btn-large">下载安装包</a>
+                    <p id="download-count" style="margin-top: 12px; font-size: 14px; color: #666;" aria-live="polite">累计下载：加载中…</p>
                     <p style="margin-top: 15px; font-size: 14px; color: #666;">文件大小: ~44MB | Windows 64位</p>
                 </div>
 
@@ -115,5 +116,57 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        (function () {
+            const assetName = 'PonyWork-v1.0.9-win64.zip';
+            const apiUrl = 'https://api.github.com/repos/jiasu1017-beep/ponywork-website/releases/tags/v1.0.9';
+            const cacheKey = 'ponywork-download-count-v1.0.9';
+            const cacheDuration = 30 * 60 * 1000;
+            const countElement = document.getElementById('download-count');
+
+            function showCount(count) {
+                countElement.textContent = '累计下载：' + Number(count).toLocaleString('zh-CN') + ' 次';
+            }
+
+            function showUnavailable() {
+                countElement.textContent = '下载统计暂不可用';
+            }
+
+            try {
+                const cached = JSON.parse(sessionStorage.getItem(cacheKey));
+                if (cached && Date.now() - cached.savedAt < cacheDuration && Number.isFinite(cached.count)) {
+                    showCount(cached.count);
+                    return;
+                }
+            } catch (error) {
+                sessionStorage.removeItem(cacheKey);
+            }
+
+            fetch(apiUrl)
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('GitHub API request failed');
+                    }
+                    return response.json();
+                })
+                .then(function (release) {
+                    const asset = (release.assets || []).find(function (item) {
+                        return item.name === assetName;
+                    });
+
+                    if (!asset || !Number.isFinite(asset.download_count)) {
+                        throw new Error('Release asset not found');
+                    }
+
+                    sessionStorage.setItem(cacheKey, JSON.stringify({
+                        count: asset.download_count,
+                        savedAt: Date.now()
+                    }));
+                    showCount(asset.download_count);
+                })
+                .catch(showUnavailable);
+        }());
+    </script>
 </body>
 </html>
