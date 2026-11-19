@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>下载 - 小马办公</title>
-    <meta name="description" content="下载小马办公 v1.0.9 正式版 - 桌面办公助手">
+    <meta name="description" content="下载小马办公 v1.1.3 正式版 - 桌面办公助手">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -38,10 +38,10 @@
                 <h2>选择您的版本</h2>
 
                 <div class="download-card">
-                    <h3>🎉 PonyWork v1.0.9 正式版</h3>
-                    <p class="version-info">最新稳定版本 · 2026-09-08 发布</p>
+                    <h3>🎉 PonyWork v1.1.3 正式版</h3>
+                    <p class="version-info">最新稳定版本 · 2026-11-19 发布</p>
                     <p class="file-info">推荐大多数用户使用</p>
-                    <a href="https://github.com/jiasu1017-beep/ponywork-website/releases/download/v1.0.9/PonyWork-v1.0.9-win64.zip" class="btn btn-primary btn-large">下载安装包</a>
+                    <a href="https://github.com/jiasu1017-beep/ponywork-website/releases/download/v1.1.3/PonyWork-v1.1.3-win64.zip" class="btn btn-primary btn-large">下载安装包</a>
                     <p id="download-count" style="margin-top: 12px; font-size: 14px; color: #666;" aria-live="polite">累计下载：加载中…</p>
                     <p style="margin-top: 15px; font-size: 14px; color: #666;">文件大小: ~44MB | Windows 64位</p>
                 </div>
@@ -49,6 +49,9 @@
                 <div class="changelog">
                     <h3>📝 更新日志</h3>
                     <ul>
+                        <li><strong>v1.1.3</strong> - 2026-11-19 - 改进远程桌面连通性检测与 FRPC 代理状态确认</li>
+                        <li><strong>v1.1.2</strong> - 2026-11-18 - 改进自动更新进度、取消操作和失败处理</li>
+                        <li><strong>v1.1.1</strong> - 2026-11-17 - 升级 FRPC TLS 连接和远程桌面端口配置</li>
                         <li><strong>v1.0.9</strong> - 2026-09-08 - 优化启动性能，增强异步操作、远程桌面和推荐应用稳定性</li>
                         <li><strong>v1.0.7</strong> - 2026-04-11 - Release发布迁移到ponywork-website仓库</li>
                         <li><strong>v1.0.6</strong> - 2026-03-17 - 用户菜单反馈功能</li>
@@ -95,7 +98,7 @@
                 <div class="footer-section">
                     <h4>关于</h4>
                     <p>小马办公 - 您的桌面办公助手</p>
-                    <p>版本: v1.0.9 正式版</p>
+                    <p>版本: v1.1.3 正式版</p>
                 </div>
                 <div class="footer-section">
                     <h4>链接</h4>
@@ -119,9 +122,9 @@
 
     <script>
         (function () {
-            const assetName = 'PonyWork-v1.0.9-win64.zip';
-            const apiUrl = 'https://api.github.com/repos/jiasu1017-beep/ponywork-website/releases/tags/v1.0.9';
-            const cacheKey = 'ponywork-download-count-v1.0.9';
+            const assetName = 'PonyWork-v1.1.3-win64.zip';
+            const apiUrl = 'https://api.github.com/repos/jiasu1017-beep/ponywork-website/releases/tags/v1.1.3';
+            const cacheKey = 'ponywork-download-count-v1.1.3';
             const cacheDuration = 30 * 60 * 1000;
             const countElement = document.getElementById('download-count');
 
